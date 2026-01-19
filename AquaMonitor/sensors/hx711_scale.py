@@ -30,6 +30,7 @@ class HX711:
     def read_raw(self):
         """
         Bit-banging the 24-bit value from HX711.
+        Added explicit delays for Pi 5 stability.
         """
         while not self.is_ready():
             time.sleep(0.001)
@@ -39,14 +40,14 @@ class HX711:
         for _ in range(24):
             # SCK High
             self.pd_sck.on()
+            time.sleep(0.000001) # 1us delay
             
-            # Read DOUT while SCK is High
-            # (Some docs say read on falling edge, but most Python drivers read while High or right after High)
-            # Let's read immediately after driving High.
+            # Read DOUT
             bit = 1 if self.dout.value else 0
             
             # SCK Low
             self.pd_sck.off()
+            time.sleep(0.000001) # 1us delay
             
             count = (count << 1) | bit
         
@@ -61,7 +62,9 @@ class HX711:
 
         for _ in range(pulses):
             self.pd_sck.on()
+            time.sleep(0.000001)
             self.pd_sck.off()
+            time.sleep(0.000001)
 
         # Convert 24-bit 2's complement
         if count & 0x800000:
