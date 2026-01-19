@@ -73,22 +73,40 @@ class HX711:
         return count
 
     def read(self):
-        # Simple median filter could be added here for stability
+        # Return a single raw reading
         return self.read_raw()
 
-    def read_average(self, times=3):
-        total = 0
+    def read_median(self, times=5):
+        """
+        Read 'times' readings, sort them, and return the median.
+        This filters out random noise spikes better than average.
+        """
+        readings = []
         for _ in range(times):
-            total += self.read_raw()
-        return total / times
+            readings.append(self.read_raw())
+            
+        readings.sort()
+        mid = len(readings) // 2
+        
+        # If even number, take average of two middle
+        if len(readings) % 2 == 0:
+            return (readings[mid-1] + readings[mid]) / 2
+        else:
+            return readings[mid]
+
+    def read_average(self, times=5):
+        # Backward compatibility, but use median logic usually better for loose wires
+        # But let's stick to true average for this method name, but use median for get_weight
+        return self.read_median(times)
 
     def get_weight(self):
-        val = self.read_average(3)
+        # Use median of 5 readings for stability
+        val = self.read_median(5)
         weight = (val - self.offset) / self.reference_unit
         return weight
 
-    def tare(self, times=10):
-        self.offset = self.read_average(times)
+    def tare(self, times=15):
+        self.offset = self.read_median(times)
         logging.info(f"Scale tared. Offset: {self.offset}")
 
 class ScaleSensor:

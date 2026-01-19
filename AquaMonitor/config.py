@@ -28,8 +28,8 @@ PH_INTERCEPT = 21.34
 
 # Load Cell
 # Reference unit obtained during calibration
-SCALE_REFERENCE_UNIT = 1  # Placeholder, needs calibration
-SCALE_OFFSET = 0          # Zero point
+SCALE_REFERENCE_UNIT = 3580.2074
+SCALE_OFFSET = 4875877.4
 
 # Turbidity
 # Polynomial or linear relation between Voltage and NTU
