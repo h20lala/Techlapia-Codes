@@ -30,7 +30,8 @@ def debug_scale():
             if ready:
                 # Read Raw
                 val = hx.read_raw()
-                print(f"Ready: {ready} | Raw Value: {val}")
+                # Print Decimal and Hex to be sure
+                print(f"Ready: {ready} | Raw (Dec): {val} | Raw (Hex): {val & 0xFFFFFF:06X}")
             else:
                 print(f"Ready: {ready} | Waiting...")
                 
