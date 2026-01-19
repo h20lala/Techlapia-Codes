@@ -1,121 +1,132 @@
-import logging
 import time
-from gpiozero import DigitalInputDevice, DigitalOutputDevice
+import sys
+import logging
+
+# Try importing RPi.GPIO (provided by rpi-lgpio on Pi 5)
+try:
+    import RPi.GPIO as GPIO
+except ImportError:
+    logging.error("RPi.GPIO not found. Ensure 'rpi-lgpio' is installed.")
+    GPIO = None
 
 class HX711:
     """
-    A minimal pure-Python HX711 driver for Raspberry Pi 5 using gpiozero/lgpio.
-    Standard 'hx711' libraries on PyPI often rely on RPi.GPIO which fails on Pi 5.
+    HX711 driver using RPi.GPIO.
+    Adapted from user-provided working script.
     """
+    
     def __init__(self, dout_pin, pd_sck_pin, gain=128):
-        self.dout = DigitalInputDevice(dout_pin)
-        self.pd_sck = DigitalOutputDevice(pd_sck_pin)
-        self.gain = gain
-        self.offset = 0
-        self.reference_unit = 1
+        self.DOUT = dout_pin
+        self.PD_SCK = pd_sck_pin
+        self.gain = 0
+        self.offset = 0          # Compatible name
+        self.reference_unit = 1  # Compatible name
         
-        # Reset
-        self.reset()
+        if GPIO:
+            GPIO.setmode(GPIO.BCM)
+            GPIO.setwarnings(False)
+            GPIO.setup(self.PD_SCK, GPIO.OUT)
+            GPIO.setup(self.DOUT, GPIO.IN)
+        
+        self.set_gain(gain)
+        time.sleep(0.5)
 
     def reset(self):
-        self.pd_sck.on()
-        time.sleep(0.0001)
-        self.pd_sck.off()
-        time.sleep(0.0001)
-
-    def is_ready(self):
-        # DOUT is low when ready
-        return self.dout.value == 0
-
-    def read_raw(self):
-        """
-        Bit-banging the 24-bit value from HX711.
-        Added explicit delays for Pi 5 stability.
-        """
-        while not self.is_ready():
-            time.sleep(0.001)
-
-        count = 0
-        # Pulse SCK 24 times to read data
-        for _ in range(24):
-            # SCK High
-            self.pd_sck.on()
-            time.sleep(0.000001) # 1us delay
-            
-            # Read DOUT
-            bit = 1 if self.dout.value else 0
-            
-            # SCK Low
-            self.pd_sck.off()
-            time.sleep(0.000001) # 1us delay
-            
-            count = (count << 1) | bit
+        self.power_down()
+        self.power_up()
+    
+    def set_gain(self, gain):
+        if gain == 128:
+            self.gain = 1
+        elif gain == 64:
+            self.gain = 3
+        elif gain == 32:
+            self.gain = 2
         
-        # Pulse SCK 1-3 more times for Gain selection
-        pulses = 1
-        if self.gain == 128:
-            pulses = 1
-        elif self.gain == 64:
-            pulses = 3
-        elif self.gain == 32:
-            pulses = 2
-
-        for _ in range(pulses):
-            self.pd_sck.on()
-            time.sleep(0.000001)
-            self.pd_sck.off()
-            time.sleep(0.000001)
-
-        # Convert 24-bit 2's complement
-        if count & 0x800000:
-            count |= ~0xffffff
-
-        return count
-
+        if GPIO:
+            GPIO.output(self.PD_SCK, False)
+        self.read_raw()
+    
+    def is_ready(self):
+        if not GPIO: return False
+        return GPIO.input(self.DOUT) == 0
+    
+    def wait_ready(self, timeout=5):
+        start = time.time()
+        while not self.is_ready():
+            if time.time() - start > timeout:
+                return False
+            time.sleep(0.001)
+        return True
+    
+    def read_raw(self):
+        if not self.wait_ready():
+            return 0
+        
+        data = 0
+        for _ in range(24):
+            GPIO.output(self.PD_SCK, True)
+            data = (data << 1) | GPIO.input(self.DOUT)
+            GPIO.output(self.PD_SCK, False)
+        
+        # Set channel and gain for next reading
+        for _ in range(self.gain):
+            GPIO.output(self.PD_SCK, True)
+            GPIO.output(self.PD_SCK, False)
+        
+        # Convert to signed value (24-bit 2's complement)
+        if data & 0x800000:
+            data -= 0x1000000
+        
+        return data
+    
     def read(self):
-        # Return a single raw reading
         return self.read_raw()
-
+        
     def read_median(self, times=5):
-        """
-        Read 'times' readings, sort them, and return the median.
-        This filters out random noise spikes better than average.
-        """
         readings = []
         for _ in range(times):
             readings.append(self.read_raw())
-            
         readings.sort()
         mid = len(readings) // 2
-        
-        # If even number, take average of two middle
         if len(readings) % 2 == 0:
             return (readings[mid-1] + readings[mid]) / 2
         else:
             return readings[mid]
 
-    def read_average(self, times=5):
-        # Backward compatibility, but use median logic usually better for loose wires
-        # But let's stick to true average for this method name, but use median for get_weight
-        return self.read_median(times)
-
+    def read_average(self, times=10):
+        # User script uses simple average
+        total = 0
+        for _ in range(times):
+            total += self.read_raw()
+        return total / times
+    
     def get_weight(self):
-        # Use median of 5 readings for stability
-        val = self.read_median(5)
+        # Compatible wrapper for main.py
+        val = self.read_median(5) # Use median for stability
         weight = (val - self.offset) / self.reference_unit
         return weight
-
+    
     def tare(self, times=15):
-        self.offset = self.read_median(times)
+        self.offset = self.read_average(times)
         logging.info(f"Scale tared. Offset: {self.offset}")
+
+    def power_down(self):
+        if GPIO:
+            GPIO.output(self.PD_SCK, False)
+            GPIO.output(self.PD_SCK, True)
+        time.sleep(0.0001)
+    
+    def power_up(self):
+        if GPIO:
+            GPIO.output(self.PD_SCK, False)
+        time.sleep(0.0005)
 
 class ScaleSensor:
     def __init__(self, dt_pin, sck_pin, reference_unit, offset):
         self.hx = HX711(dt_pin, sck_pin)
         self.hx.reference_unit = reference_unit
         self.hx.offset = offset
-        # Optional: auto-tare on startup? Maybe not, better to rely on saved config
-        # But if config offset is 0, we might need to assume it's empty or force user to calibration.
 
     def read_weight(self):
         try:
