@@ -30,32 +30,27 @@ class HX711:
     def read_raw(self):
         """
         Bit-banging the 24-bit value from HX711.
-        Pi 5 is fast, so Python bitbanging is usually okay for low-speed like HX711 (10Hz/80Hz).
-        However, OS interrupts can introduce jitter. For thesis grade, we ideally use a C-extension,
-        but for 'Python only' constraint + Pi 5 compatibility, this valid approach.
         """
         while not self.is_ready():
             time.sleep(0.001)
 
         count = 0
         # Pulse SCK 24 times to read data
-        # MSB first
         for _ in range(24):
+            # SCK High
             self.pd_sck.on()
-            # No sleep needed for Pi 5 - Python overhead is enough for pulse width
-            # But let's be safe with tiny delay if needed, though usually print statement or function call overhead is enough.
-            # HX711 max freq is high.
+            
+            # Read DOUT while SCK is High
+            # (Some docs say read on falling edge, but most Python drivers read while High or right after High)
+            # Let's read immediately after driving High.
+            bit = 1 if self.dout.value else 0
+            
+            # SCK Low
             self.pd_sck.off()
             
-            count = count << 1
-            if self.dout.value:
-                count += 1
+            count = (count << 1) | bit
         
         # Pulse SCK 1-3 more times for Gain selection
-        # 1 pulse = 128 gain (25 pulses total)
-        # 3 pulses = 64 gain (27 pulses total)
-        # 2 pulses = 32 gain (26 pulses total)
-        
         pulses = 1
         if self.gain == 128:
             pulses = 1
