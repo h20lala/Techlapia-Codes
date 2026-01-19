@@ -30,8 +30,23 @@ def debug_scale():
             if ready:
                 # Read Raw
                 val = hx.read_raw()
-                # Print Decimal and Hex to be sure
-                print(f"Ready: {ready} | Raw (Dec): {val} | Raw (Hex): {val & 0xFFFFFF:06X}")
+                hex_val = val & 0xFFFFFF
+                
+                print(f"Ready: {ready} | Raw (Dec): {val} | Raw (Hex): {hex_val:06X}")
+                
+                if val == -8388608:
+                    print("  [!] ALERT: NEGATIVE SATURATION DETECTED")
+                    print("      The sensor is reading the minimum possible value.")
+                    print("      CAUSE: The 'Signal' wires (Green/White) are likely reversed.")
+                    print("      FIX: Swap the Green and White wires on the HX711 module.")
+                    print("      (Even if color-coded, internal load cell wiring can vary!)")
+                elif val == 8388607:
+                    print("  [!] ALERT: POSITIVE SATURATION DETECTED")
+                    print("      The sensor is reading the maximum possible value.")
+                    print("      CAUSE: Input voltage too high or short circuit.")
+                elif val == -1 or hex_val == 0xFFFFFF:
+                    print("  [!] ALERT: SENSOR DISCONNECTED OR POWER DOWN")
+                    print("      Reading all 1s. Check VCC/GND/DT/SCK wiring.")
             else:
                 print(f"Ready: {ready} | Waiting...")
                 
