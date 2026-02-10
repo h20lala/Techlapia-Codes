@@ -46,7 +46,7 @@ const Dashboard = ({ onNavigate }) => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await fetch('http://localhost:5000/api/sensors');
+                const response = await fetch(`http://${window.location.hostname}:5000/api/sensors`);
                 const data = await response.json();
                 if (data) {
                     setSensorData({

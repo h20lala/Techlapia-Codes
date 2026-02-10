@@ -3,7 +3,7 @@ import React, { useRef, useEffect, useState } from 'react';
 const CameraFeed = () => {
     const videoRef = useRef(null);
     const [useLocal, setUseLocal] = useState(false);
-    const [streamUrl, setStreamUrl] = useState('http://localhost:5000/video_feed');
+    const [streamUrl, setStreamUrl] = useState(`http://${window.location.hostname}:5000/video_feed`);
     const [error, setError] = useState(false);
 
     // Function to start local webcam (Laptop Test)
