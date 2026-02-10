@@ -4,8 +4,7 @@ flask-cors
 opencv-python
 adafruit-circuitpython-ads1x15
 adafruit-circuitpython-busdevice
-board
-busio
+Adafruit-Blinka
 gpiozero
 numpy
-rpi.gpio
+rpi-lgpio

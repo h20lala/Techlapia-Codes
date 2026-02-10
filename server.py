@@ -3,6 +3,7 @@ from flask_cors import CORS
 import time
 import random
 import threading
+import numpy as np
 import cv2  # OpenCV for Camera
 
 # Try to import sensor libraries (Mock if not available)
@@ -40,19 +41,34 @@ CORS(app) # Enable CORS for React frontend
 
 # --- CAMERA STREAMING ---
 camera = cv2.VideoCapture(0) # 0 is usually the default camera (USB or Pi Cam if configured)
+if not camera.isOpened():
+    print("WARNING: Camera not found or accessible. Using MOCK video feed.")
+    camera = None
 
 def generate_frames():
     while True:
-        success, frame = camera.read()
-        if not success:
-            break
-        else:
-            # Encode frame to JPG
+        if camera is None:
+            # Create a black frame with text
+            frame = np.zeros((480, 640, 3), dtype=np.uint8)
+            cv2.putText(frame, "No Camera Detected", (180, 240), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
             ret, buffer = cv2.imencode('.jpg', frame)
             frame = buffer.tobytes()
-            # Yield frame in MJPEG format
             yield (b'--frame\r\n'
                    b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+            time.sleep(1) # Low FPS for mock
+        else:
+            success, frame = camera.read()
+            if not success:
+                # If reading fails mid-stream, just break or handle error
+                # For now, break loop (stream ends)
+                break
+            else:
+                # Encode frame to JPG
+                ret, buffer = cv2.imencode('.jpg', frame)
+                frame = buffer.tobytes()
+                # Yield frame in MJPEG format
+                yield (b'--frame\r\n'
+                       b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
 @app.route('/video_feed')
 def video_feed():
