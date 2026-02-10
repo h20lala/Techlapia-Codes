@@ -1,0 +1,11 @@
+
+flask
+flask-cors
+opencv-python
+adafruit-circuitpython-ads1x15
+adafruit-circuitpython-busdevice
+board
+busio
+gpiozero
+numpy
+rpi.gpio
