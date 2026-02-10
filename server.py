@@ -1,0 +1,130 @@
+from flask import Flask, jsonify, Response
+from flask_cors import CORS
+import time
+import random
+import threading
+import cv2  # OpenCV for Camera
+
+# Try to import sensor libraries (Mock if not available)
+try:
+    import board
+    import busio
+    import adafruit_ads1x15.ads1115 as ADS
+    from adafruit_ads1x15.analog_in import AnalogIn
+    from gpiozero import DigitalInputDevice
+    import glob
+    
+    # pH Setup
+    i2c = busio.I2C(board.SCL, board.SDA)
+    ads = ADS.ADS1115(i2c)
+    ads.gain = 1
+    ph_chan = AnalogIn(ads, ADS.P0)
+    
+    # Turbidity Setup
+    turbidity_sensor = DigitalInputDevice(17)
+    
+    # Temp Setup
+    base_dir = '/sys/bus/w1/devices/'
+    # Find device folder - handling error if no device
+    device_folders = glob.glob(base_dir + '28*')
+    device_file = device_folders[0] + '/w1_slave' if device_folders else None
+
+    MOCK_MODE = False
+except Exception as e:
+    print(f"Sensor libraries not found or hardware missing: {e}")
+    print("Running in MOCK MODE for SENSORS")
+    MOCK_MODE = True
+
+app = Flask(__name__)
+CORS(app) # Enable CORS for React frontend
+
+# --- CAMERA STREAMING ---
+camera = cv2.VideoCapture(0) # 0 is usually the default camera (USB or Pi Cam if configured)
+
+def generate_frames():
+    while True:
+        success, frame = camera.read()
+        if not success:
+            break
+        else:
+            # Encode frame to JPG
+            ret, buffer = cv2.imencode('.jpg', frame)
+            frame = buffer.tobytes()
+            # Yield frame in MJPEG format
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
+
+@app.route('/video_feed')
+def video_feed():
+    return Response(generate_frames(), mimetype='multipart/x-mixed-replace; boundary=frame')
+# ------------------------
+
+def read_temp():
+    if MOCK_MODE or not device_file:
+        return round(random.uniform(25.0, 32.0), 1)
+        
+    try:
+        with open(device_file, 'r') as f:
+            lines = f.readlines()
+        if lines[0].strip()[-3:] != 'YES':
+            return 0
+        equals_pos = lines[1].find('t=')
+        if equals_pos != -1:
+            temp_string = lines[1][equals_pos+2:]
+            return float(temp_string) / 1000.0
+    except:
+        return 0
+
+def read_ph():
+    if MOCK_MODE:
+        return round(random.uniform(6.5, 8.5), 1)
+        
+    try:
+        # Simple convert voltage to pH (needs calibration normally)
+        # Assuming 2.5V center = pH 7
+        voltage = ph_chan.voltage
+        # Example formula: pH = 7 + ((2.5 - voltage) / 0.18)
+        # This is a placeholder formula
+        return round(7 + ((2.5 - voltage) * 3.5), 2)
+    except:
+        return 7.0
+
+def read_turbidity():
+    if MOCK_MODE:
+        return round(random.uniform(0, 25), 1)
+        
+    try:
+        # Digital sensor only returns 0 or 1 (High/Low)
+        # If High (1) -> Clear (< Threshold), If Low (0) -> Turbid?
+        # Script says: if sensor.value == 1: CLEAR
+        # We need a value for the UI (mg/L or NTU). 
+        # Since it's digital, we can only return approximate.
+        # Clear = 5 NTU, Turbid = 100 NTU
+        if turbidity_sensor.value == 1:
+            return 5 # Clear
+        else:
+            return 100 # Turbid
+    except:
+        return 0
+
+def read_water_level():
+    # No sensor script provided for water level in the examples
+    # Returning mock value
+    return 75 
+
+@app.route('/api/sensors')
+def get_sensors():
+    data = {
+        "temperature": read_temp(),
+        "ph": read_ph(),
+        "turbidity": read_turbidity(),
+        "water_level": read_water_level(),
+        "do": 6.5, # Mock DO > 5
+        "bod": 2.0, # Mock BOD < 5
+        "tds": 350 # Mock TDS < 400
+    }
+    return jsonify(data)
+
+if __name__ == '__main__':
+    # Run threaded to allow camera loop
+    app.run(host='0.0.0.0', port=5000, threaded=True)

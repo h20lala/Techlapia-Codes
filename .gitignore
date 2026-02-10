@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Production
+dist/
+build/
+
+# Environment variables
+.env
+
+# System Files
+.DS_Store
+Thumbs.db
+
+# User Exclusions
+Techlapia-Methods.pdf
+programs/

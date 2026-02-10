@@ -1,0 +1,40 @@
+:root {
+  /* Brand Colors - Dark Blue Theme per PDF */
+  --color-primary: #101828;
+  /* Dark navy background */
+  --color-secondary: #1D2939;
+  /* Card background */
+  --color-accent: #0EA5E9;
+  /* Bright blue for highlights */
+  --color-text-main: #FFFFFF;
+  --color-text-muted: #98A2B3;
+
+  /* Status Colors */
+  --color-success: #12B76A;
+  --color-warning: #F79009;
+  --color-error: #F04438;
+  --color-info: #0BA5EC;
+
+  /* Layout - Compacted for 1024x600 */
+  --spacing-xs: 4px;
+  --spacing-sm: 6px;
+  /* Reduced from 8px */
+  --spacing-md: 10px;
+  /* Reduced from 16px */
+  --spacing-lg: 16px;
+  /* Reduced from 24px */
+
+  /* Typography - Scaled down slightly */
+  --font-family-main: 'Inter', system-ui, sans-serif;
+  --font-family-display: 'Outfit', system-ui, sans-serif;
+
+  /* Effects */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 8px 12px -3px rgba(0, 0, 0, 0.4);
+  --glass-bg: rgba(29, 41, 57, 0.85);
+  /* Slightly more opaque for better contrast */
+  --glass-border: 1px solid rgba(255, 255, 255, 0.1);
+  --radius-md: 8px;
+  /* Slightly sharper */
+  --radius-lg: 12px;
+}
