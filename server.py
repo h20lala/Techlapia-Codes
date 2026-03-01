@@ -7,6 +7,14 @@ import numpy as np
 import cv2  # OpenCV for Camera
 
 # Try to import sensor libraries (Mock if not available)
+PH_MOCK = True
+TURB_MOCK = True
+TEMP_MOCK = True
+
+ph_chan = None
+turbidity_sensor = None
+device_file = None
+
 try:
     import board
     import busio
@@ -16,25 +24,40 @@ try:
     import glob
     
     # pH Setup
-    i2c = busio.I2C(board.SCL, board.SDA)
-    ads = ADS.ADS1115(i2c)
-    ads.gain = 1
-    ph_chan = AnalogIn(ads, ADS.P0)
+    try:
+        i2c = busio.I2C(board.SCL, board.SDA)
+        ads = ADS.ADS1115(i2c)
+        ads.gain = 1
+        ph_chan = AnalogIn(ads, ADS.P0)
+        PH_MOCK = False
+        print("pH sensor initialized successfully.")
+    except Exception as e:
+        print(f"pH sensor missing or failed: {e}")
     
     # Turbidity Setup
-    turbidity_sensor = DigitalInputDevice(17)
+    try:
+        turbidity_sensor = DigitalInputDevice(17)
+        TURB_MOCK = False
+        print("Turbidity sensor initialized successfully.")
+    except Exception as e:
+        print(f"Turbidity sensor missing or failed: {e}")
     
     # Temp Setup
-    base_dir = '/sys/bus/w1/devices/'
-    # Find device folder - handling error if no device
-    device_folders = glob.glob(base_dir + '28*')
-    device_file = device_folders[0] + '/w1_slave' if device_folders else None
+    try:
+        base_dir = '/sys/bus/w1/devices/'
+        device_folders = glob.glob(base_dir + '28*')
+        if device_folders:
+            device_file = device_folders[0] + '/w1_slave'
+            TEMP_MOCK = False
+            print("Temperature sensor initialized successfully.")
+        else:
+            print("Temperature sensor 1-wire folder not found.")
+    except Exception as e:
+        print(f"Temperature sensor missing or failed: {e}")
 
-    MOCK_MODE = False
 except Exception as e:
     print(f"Sensor libraries not found or hardware missing: {e}")
-    print("Running in MOCK MODE for SENSORS")
-    MOCK_MODE = True
+    print("Running in MOCK MODE for ALL SENSORS")
 
 app = Flask(__name__)
 CORS(app) # Enable CORS for React frontend
@@ -76,7 +99,7 @@ def video_feed():
 # ------------------------
 
 def read_temp():
-    if MOCK_MODE or not device_file:
+    if TEMP_MOCK or not device_file:
         return round(random.uniform(25.0, 32.0), 1)
         
     try:
@@ -92,7 +115,7 @@ def read_temp():
         return 0
 
 def read_ph():
-    if MOCK_MODE:
+    if PH_MOCK or not ph_chan:
         return round(random.uniform(6.5, 8.5), 1)
         
     try:
@@ -106,7 +129,7 @@ def read_ph():
         return 7.0
 
 def read_turbidity():
-    if MOCK_MODE:
+    if TURB_MOCK or not turbidity_sensor:
         return round(random.uniform(0, 25), 1)
         
     try:
