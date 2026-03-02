@@ -1,10 +1,72 @@
-from flask import Flask, jsonify, Response
+from flask import Flask, jsonify, Response, request
 from flask_cors import CORS
 import time
 import random
 import threading
 import numpy as np
 import cv2  # OpenCV for Camera
+import sqlite3
+import os
+from datetime import datetime
+from dotenv import load_dotenv
+import schedule
+
+# Load Environment Variables
+load_dotenv()
+
+# Initialize Supabase
+import urllib.request
+import json
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+if SUPABASE_URL and SUPABASE_KEY:
+    print("Supabase keys loaded. Will send logs via REST API.")
+else:
+    print("Supabase keys missing.")
+
+# --- SQLITE DB SETUP ---
+DB_FILE = 'techlapia.db'
+
+def init_db():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            date TEXT,
+            time TEXT,
+            amount_g REAL,
+            weight_g REAL,
+            population INTEGER,
+            temperature REAL,
+            ph REAL,
+            water_level REAL,
+            turbidity REAL
+        )
+    ''')
+    c.execute('''
+        CREATE TABLE IF NOT EXISTS settings (
+            id INTEGER PRIMARY KEY,
+            population INTEGER,
+            length REAL,
+            width REAL,
+            depth REAL,
+            weight REAL,
+            mock_weight REAL DEFAULT 20
+        )
+    ''')
+    try:
+        c.execute('ALTER TABLE settings ADD COLUMN mock_weight REAL DEFAULT 20')
+    except sqlite3.OperationalError:
+        pass # Column already exists
+    # Init default settings if empty
+    c.execute('SELECT COUNT(*) FROM settings')
+    if c.fetchone()[0] == 0:
+        c.execute('INSERT INTO settings (id, population, length, width, depth, weight) VALUES (1, 15, 172, 194, 75, 250)')
+    conn.commit()
+    conn.close()
+
+init_db()
 
 # Try to import sensor libraries (Mock if not available)
 PH_MOCK = True
@@ -82,14 +144,10 @@ def generate_frames():
         else:
             success, frame = camera.read()
             if not success:
-                # If reading fails mid-stream, just break or handle error
-                # For now, break loop (stream ends)
                 break
             else:
-                # Encode frame to JPG
                 ret, buffer = cv2.imencode('.jpg', frame)
                 frame = buffer.tobytes()
-                # Yield frame in MJPEG format
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + frame + b'\r\n')
 
@@ -119,11 +177,7 @@ def read_ph():
         return round(random.uniform(6.5, 8.5), 1)
         
     try:
-        # Simple convert voltage to pH (needs calibration normally)
-        # Assuming 2.5V center = pH 7
         voltage = ph_chan.voltage
-        # Example formula: pH = 7 + ((2.5 - voltage) / 0.18)
-        # This is a placeholder formula
         return round(7 + ((2.5 - voltage) * 3.5), 2)
     except:
         return 7.0
@@ -133,12 +187,6 @@ def read_turbidity():
         return round(random.uniform(0, 25), 1)
         
     try:
-        # Digital sensor only returns 0 or 1 (High/Low)
-        # If High (1) -> Clear (< Threshold), If Low (0) -> Turbid?
-        # Script says: if sensor.value == 1: CLEAR
-        # We need a value for the UI (mg/L or NTU). 
-        # Since it's digital, we can only return approximate.
-        # Clear = 5 NTU, Turbid = 100 NTU
         if turbidity_sensor.value == 1:
             return 5 # Clear
         else:
@@ -147,8 +195,6 @@ def read_turbidity():
         return 0
 
 def read_water_level():
-    # No sensor script provided for water level in the examples
-    # Returning mock value
     return 75 
 
 @app.route('/api/sensors')
@@ -158,12 +204,233 @@ def get_sensors():
         "ph": read_ph(),
         "turbidity": read_turbidity(),
         "water_level": read_water_level(),
-        "do": 6.5, # Mock DO > 5
-        "bod": 2.0, # Mock BOD < 5
-        "tds": 350 # Mock TDS < 400
+        "do": 6.5, 
+        "bod": 2.0, 
+        "tds": 350 
     }
     return jsonify(data)
 
+# --- FEEDING AND LOGIC ---
+def get_settings():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('SELECT population, length, width, depth, weight, mock_weight FROM settings WHERE id = 1')
+    row = c.fetchone()
+    conn.close()
+    if row:
+        return {"population": row[0], "length": row[1], "width": row[2], "depth": row[3], "weight": row[4], "mock_weight": row[5] if row[5] else 20}
+    return {"population": 15, "length": 172, "width": 194, "depth": 75, "weight": 250, "mock_weight": 20}
+
+def calculate_feeding():
+    settings = get_settings()
+    # We will use the mock current weight
+    w = settings.get('mock_weight', 20)
+    s = settings['population']
+    
+    # Table 2: Daily Feeding Ratio (%)
+    if w <= 1:
+        dfr_percent = 20 # Avg 10-30
+    elif w <= 5:
+        dfr_percent = 8  # Avg 6-10
+    elif w <= 20:
+        dfr_percent = 5  # Avg 4-6
+    elif w <= 100:
+        dfr_percent = 3.5 # Avg 3-4
+    else:
+        dfr_percent = 2.25 # Avg 1.5-3
+        
+    dfr = dfr_percent / 100.0
+    
+    # Table 3: Daily Feeding Frequency
+    if w <= 1:
+        f = 6 # Avg 4-8
+    elif w <= 5:
+        f = 6 # Avg 4-8
+    elif w <= 20:
+        f = 3 # Avg 2-4
+    elif w <= 100:
+        f = 3 # Avg 2-4
+    else:
+        f = 3 # Avg 2-4
+        
+    # Equation 4: A = (S x W x DFR) / f
+    if f > 0:
+        a = (s * w * dfr) / f
+    else:
+        a = 0
+        
+    return {"amount_g": round(a, 2), "frequency": f, "weight": w, "population": s}
+def get_feeding_times(frequency):
+    # Depending on frequency, map times evenly throughout the day (e.g. 9am to 6pm)
+    times = []
+    if frequency == 1:
+        times = ["09:00"]
+    elif frequency == 2:
+        times = ["09:00", "15:00"]
+    elif frequency == 3:
+        times = ["09:00", "13:00", "17:00"]
+    elif frequency == 4:
+        times = ["09:00", "12:00", "15:00", "18:00"]
+    elif frequency == 5:
+        times = ["08:00", "10:30", "13:00", "15:30", "18:00"]
+    elif frequency >= 6:
+        times = ["08:00", "10:00", "12:00", "14:00", "16:00", "18:00"]
+    return times
+
+def log_feeding(amount_g, weight_g, population):
+    now = datetime.now()
+    date_str = now.strftime('%m/%d/%Y')  # Matches dummy data format
+    time_str = now.strftime('%I:%M %p')
+    temp = read_temp()
+    ph = read_ph()
+    lvl = read_water_level()
+    turb = read_turbidity()
+    
+    # Local SQLite save
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+        INSERT INTO logs (date, time, amount_g, weight_g, population, temperature, ph, water_level, turbidity)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (date_str, time_str, amount_g, weight_g, population, temp, ph, lvl, turb))
+    log_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    
+    # Supabase save via REST API
+    if SUPABASE_URL and SUPABASE_KEY:
+        try:
+            url = f"{SUPABASE_URL}/rest/v1/logs"
+            payload = {
+                "date": date_str,
+                "time": time_str,
+                "amount_g": float(amount_g),
+                "weight_g": float(weight_g),
+                "population": int(population),
+                "temperature": float(temp),
+                "ph": float(ph),
+                "water_level": float(lvl),
+                "turbidity": float(turb)
+            }
+            req = urllib.request.Request(
+                url, 
+                data=json.dumps(payload).encode('utf-8'),
+                headers={
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                    "Content-Type": "application/json",
+                    "Prefer": "return=minimal"
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req) as response:
+                print(f"Logged to Supabase: HTTP {response.status}")
+        except Exception as e:
+            print(f"Supabase REST log failed: {e}")
+
+    return {
+        "id": log_id, "date": date_str, "len": "40 mm", "feed": f"{amount_g} g", "w": f"{weight_g} g",
+        "pop": population, "temp": f"{temp}° C", "ph": ph, "lvl": f"{lvl} cm", "turb": f"{turb} mg/L"
+    }
+
+def scheduled_job():
+    # Only feed if it's currently one of the scheduled times
+    # In a real app we'd trigger the feeder hardware here
+    now_hm = datetime.now().strftime("%H:%M")
+    calc = calculate_feeding()
+    times = get_feeding_times(calc['frequency'])
+    if now_hm in times:
+        print(f"Time {now_hm} met! Triggering scheduled feed...")
+        log_feeding(calc['amount_g'], calc['weight'], calc['population'])
+
+def run_schedule():
+    # Check every minute
+    schedule.every().minute.at(":00").do(scheduled_job)
+    while True:
+        schedule.run_pending()
+        time.sleep(1)
+
+# Start background scheduler
+scheduler_thread = threading.Thread(target=run_schedule, daemon=True)
+scheduler_thread.start()
+
+@app.route('/api/feed', methods=['POST'])
+def trigger_feed():
+    # Manual Feed Trigger
+    print("Feeder triggered manually!")
+    calc = calculate_feeding()
+    log_data = log_feeding(calc['amount_g'], calc['weight'], calc['population'])
+    return jsonify({"success": True, "log": log_data})
+
+@app.route('/api/schedule', methods=['GET'])
+def get_schedule():
+    calc = calculate_feeding()
+    times = get_feeding_times(calc['frequency'])
+    
+    now_date = datetime.now().strftime('%m/%d/%Y')
+    schedule_data = []
+    for t in times:
+        # convert 24h to 12h
+        time_obj = datetime.strptime(t, "%H:%M")
+        time_12 = time_obj.strftime("%I:%M %p")
+        schedule_data.append({
+            "date": now_date,
+            "time": time_12,
+            "feeds": f"{calc['amount_g']} g",
+            "weight": f"{calc['weight']} g"
+        })
+    return jsonify(schedule_data)
+
+@app.route('/api/logs', methods=['GET'])
+def get_logs():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('SELECT id, date, time, amount_g, weight_g, population, temperature, ph, water_level, turbidity FROM logs ORDER BY id DESC')
+    rows = c.fetchall()
+    conn.close()
+    
+    logs = []
+    for r in rows:
+        logs.append({
+            "id": r[0],
+            "date": f"{r[1]} {r[2]}", # Combine date & time since table only has 'Date' column and there's limited space. Or just date. Keep as Dummy data
+            "date_val": r[1],
+            "time_val": r[2],
+            "len": "40 mm", # Mock Length
+            "feed": f"{r[3]} g",
+            "w": f"{r[4]} g",
+            "pop": r[5],
+            "temp": f"{r[6]}° C",
+            "ph": r[7],
+            "lvl": f"{r[8]} cm",
+            "turb": f"{r[9]} mg/L"
+        })
+    return jsonify(logs)
+
+@app.route('/api/logs/<int:log_id>', methods=['DELETE'])
+def delete_log(log_id):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('DELETE FROM logs WHERE id = ?', (log_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route('/api/settings', methods=['POST'])
+def update_settings():
+    data = request.json
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute('''
+        UPDATE settings SET population=?, length=?, width=?, depth=?, weight=?, mock_weight=? WHERE id=1
+    ''', (data.get('population', 15), data.get('length', 172), data.get('width', 194), data.get('depth', 75), data.get('weight', 250), data.get('mock_weight', 20)))
+    conn.commit()
+    conn.close()
+    return jsonify({"success": True})
+
+@app.route('/api/settings', methods=['GET'])
+def fetch_settings():
+    return jsonify(get_settings())
+
 if __name__ == '__main__':
-    # Run threaded to allow camera loop
     app.run(host='0.0.0.0', port=5000, threaded=True)

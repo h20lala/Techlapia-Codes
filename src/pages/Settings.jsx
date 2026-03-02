@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout.jsx';
 import Navigation from '../components/Navigation.jsx';
 import StatusCard from '../components/StatusCard.jsx';
+import CameraFeed from '../components/CameraFeed.jsx';
 
 const Settings = ({ onNavigate }) => {
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -12,16 +13,51 @@ const Settings = ({ onNavigate }) => {
         return () => clearInterval(timer);
     }, []);
 
-    // State for calculation
     const [inputs, setInputs] = useState({
         population: 15,
         length: 172,
         width: 194,
         depth: 75,
-        weight: 250
+        weight: 250,
+        mock_weight: 20
     });
-
     const [density, setDensity] = useState(0);
+    const [initialLoaded, setInitialLoaded] = useState(false);
+
+    // Fetch settings on mount
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const res = await fetch(`http://${window.location.hostname}:5000/api/settings`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setInputs(data);
+                }
+            } catch (err) {
+                console.error("Error fetching settings:", err);
+            } finally {
+                setInitialLoaded(true);
+            }
+        };
+        fetchSettings();
+    }, []);
+
+    // Auto-save settings when inputs change
+    useEffect(() => {
+        if (!initialLoaded) return;
+        const timer = setTimeout(async () => {
+            try {
+                await fetch(`http://${window.location.hostname}:5000/api/settings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(inputs)
+                });
+            } catch (err) {
+                console.error("Error saving settings:", err);
+            }
+        }, 1000);
+        return () => clearTimeout(timer);
+    }, [inputs, initialLoaded]);
 
     useEffect(() => {
         const volumeM3 = (inputs.length * inputs.width * inputs.depth) / 1000000;
@@ -137,6 +173,17 @@ const Settings = ({ onNavigate }) => {
                         />
                     </div>
 
+                    {/* Current Fish Weight Input (Mock) */}
+                    <div style={styles.inputGroup}>
+                        <span style={styles.label}>Current Fish Weight (Mock) in grams</span>
+                        <input
+                            style={styles.input}
+                            name="mock_weight"
+                            value={inputs.mock_weight}
+                            onChange={handleInputChange}
+                        />
+                    </div>
+
                     {/* Calculated Density */}
                     <StatusCard
                         label={`Stocking Density (Td) = (Tn × Tw) / V`}
@@ -148,9 +195,8 @@ const Settings = ({ onNavigate }) => {
                 </div>
             }
         >
-            <div style={{ width: '100%', height: '100%', background: '#fff', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={styles.cameraOverlay} />
-                <span style={styles.cameraText}>LIVE-FEED FROM CAMERA MODULE</span>
+            <div style={{ width: '100%', height: '100%', background: '#000', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                <CameraFeed />
             </div>
         </Layout>
     );

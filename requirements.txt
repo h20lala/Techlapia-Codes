@@ -8,3 +8,6 @@ Adafruit-Blinka
 gpiozero
 numpy
 rpi-lgpio
+supabase
+python-dotenv
+schedule

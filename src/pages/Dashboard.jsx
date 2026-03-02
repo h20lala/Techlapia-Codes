@@ -35,6 +35,7 @@ const Dashboard = ({ onNavigate }) => {
         turbidity: 0,
         water_level: 75
     });
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
 
     // Real-time Clock
     useEffect(() => {
@@ -169,8 +170,8 @@ const Dashboard = ({ onNavigate }) => {
                     </div>
 
                     <NotificationPanel />
-                    <FeedingSchedule />
-                    <ActionButtons />
+                    <FeedingSchedule refreshTrigger={refreshTrigger} />
+                    <ActionButtons onFeederTriggered={() => setRefreshTrigger(prev => prev + 1)} />
 
                     <Navigation onNavigate={onNavigate} activePage="dashboard" />
                 </div>

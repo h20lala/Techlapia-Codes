@@ -13,18 +13,24 @@ const LogRecords = ({ onNavigate }) => {
         return () => clearInterval(timer);
     }, []);
 
-    const [logs, setLogs] = useState([
-        { id: 1, date: '1/1/2026', len: '40 mm', feed: '4 g', w: '20 g', pop: 20, temp: '25° C', ph: 6.5, lvl: '75 cm', turb: '50 mg/L' },
-        { id: 2, date: '1/1/2026', len: '40 mm', feed: '4 g', w: '20 g', pop: 20, temp: '25° C', ph: 6.5, lvl: '75 cm', turb: '50 mg/L' },
-        { id: 3, date: '1/2/2026', len: '40 mm', feed: '4 g', w: '20 g', pop: 20, temp: '25° C', ph: 6.5, lvl: '75 cm', turb: '50 mg/L' },
-        { id: 4, date: '1/2/2026', len: '40 mm', feed: '4 g', w: '20 g', pop: 20, temp: '25° C', ph: 6.5, lvl: '75 cm', turb: '50 mg/L' },
-        { id: 5, date: '1/3/2026', len: '40 mm', feed: '4 g', w: '20 g', pop: 20, temp: '25° C', ph: 6.5, lvl: '75 cm', turb: '50 mg/L' },
-        { id: 6, date: '1/3/2026', len: '40 mm', feed: '4 g', w: '20 g', pop: 20, temp: '25° C', ph: 6.5, lvl: '75 cm', turb: '50 mg/L' },
-        { id: 7, date: '1/4/2026', len: '40 mm', feed: '4 g', w: '20 g', pop: 20, temp: '25° C', ph: 6.5, lvl: '75 cm', turb: '50 mg/L' },
-        { id: 8, date: '1/4/2026', len: '40 mm', feed: '4 g', w: '20 g', pop: 20, temp: '25° C', ph: 6.5, lvl: '75 cm', turb: '50 mg/L' },
-        { id: 9, date: '1/5/2026', len: '40 mm', feed: '4 g', w: '20 g', pop: 20, temp: '25° C', ph: 6.5, lvl: '75 cm', turb: '50 mg/L' },
-        { id: 10, date: '1/5/2026', len: '40 mm', feed: '4 g', w: '20 g', pop: 20, temp: '25° C', ph: 6.5, lvl: '75 cm', turb: '50 mg/L' },
-    ]);
+    const [logs, setLogs] = useState([]);
+
+    useEffect(() => {
+        const fetchLogs = async () => {
+            try {
+                const res = await fetch(`http://${window.location.hostname}:5000/api/logs`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setLogs(data);
+                }
+            } catch (err) {
+                console.error("Error fetching logs:", err);
+            }
+        };
+        fetchLogs();
+        const interval = setInterval(fetchLogs, 5000); // 5 sec refresh
+        return () => clearInterval(interval);
+    }, []);
 
     const [selectedId, setSelectedId] = useState(null);
 
@@ -46,10 +52,15 @@ const LogRecords = ({ onNavigate }) => {
         doc.save("techlapia_logs.pdf");
     };
 
-    const handleDelete = () => {
+    const handleDelete = async () => {
         if (selectedId) {
-            setLogs(logs.filter(log => log.id !== selectedId));
-            setSelectedId(null);
+            try {
+                await fetch(`http://${window.location.hostname}:5000/api/logs/${selectedId}`, { method: 'DELETE' });
+                setLogs(logs.filter(log => log.id !== selectedId));
+                setSelectedId(null);
+            } catch (err) {
+                console.error("Error deleting log:", err);
+            }
         }
     };
 

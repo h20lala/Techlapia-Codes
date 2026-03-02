@@ -1,6 +1,16 @@
 import React from 'react';
 
-const ActionButtons = () => {
+const ActionButtons = ({ onFeederTriggered }) => {
+    const handleFeeder = async () => {
+        try {
+            const res = await fetch(`http://${window.location.hostname}:5000/api/feed`, { method: 'POST' });
+            if (res.ok && onFeederTriggered) {
+                onFeederTriggered();
+            }
+        } catch (error) {
+            console.error("Failed to trigger feeder", error);
+        }
+    };
     const styles = {
         container: {
             marginBottom: '8px'
@@ -50,7 +60,7 @@ const ActionButtons = () => {
             <div style={styles.rowStyles}>
                 <button style={{ ...styles.button, ...styles.waterBtn }}>WATER</button>
                 <button style={{ ...styles.button, ...styles.aeratorBtn }}>AERATOR</button>
-                <button style={{ ...styles.button, ...styles.feederBtn }}>FEEDER</button>
+                <button style={{ ...styles.button, ...styles.feederBtn }} onClick={handleFeeder}>FEEDER</button>
             </div>
         </div>
     );
