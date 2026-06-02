@@ -353,6 +353,38 @@ scheduler_thread.start()
 
 # Global to track feeder subprocess
 feeder_process = None
+water_pump_process = None
+
+@app.route('/api/water-filter', methods=['POST'])
+def toggle_water_filter():
+    global water_pump_process
+    
+    req_data = request.get_json(silent=True) or {}
+    state = req_data.get('state') # "on" or "off"
+    
+    script_path = os.path.join(os.path.dirname(__file__), 'AquaMonitor', 'tests', 'water_pump.py')
+    
+    if state == "on":
+        if water_pump_process is None or water_pump_process.poll() is not None:
+            import subprocess
+            import sys
+            water_pump_process = subprocess.Popen([sys.executable, script_path, "on"])
+            print("Water pump started.")
+            return jsonify({"success": True, "state": "on"})
+        else:
+            return jsonify({"success": True, "message": "Already running", "state": "on"})
+            
+    elif state == "off":
+        if water_pump_process is not None and water_pump_process.poll() is None:
+            water_pump_process.terminate()
+            water_pump_process.wait()
+            water_pump_process = None
+            print("Water pump stopped.")
+            return jsonify({"success": True, "state": "off"})
+        else:
+            return jsonify({"success": True, "message": "Already stopped", "state": "off"})
+            
+    return jsonify({"success": False, "error": "Invalid state"}), 400
 
 @app.route('/api/feed', methods=['POST'])
 def trigger_feed():
