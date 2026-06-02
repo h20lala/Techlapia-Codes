@@ -30,7 +30,7 @@ const Layout = ({ children, sidebar }) => {
             color: '#000', // Text on white bg
         },
         sidebarArea: {
-            flex: '1 1 340px', // Allow to grow on small screens, wrap if < 340px
+            flex: '0 0 320px', // Fixed width, don't grow
             maxWidth: '100%', // Prevent overflow on very small screens
             display: 'flex',
             flexDirection: 'column',
