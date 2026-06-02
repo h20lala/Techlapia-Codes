@@ -371,9 +371,10 @@ def trigger_feed():
     feeder_script_path = os.path.join(os.path.dirname(__file__), 'AquaMonitor', 'tests', 'feeder2.py')
     if os.path.exists(feeder_script_path):
         import subprocess
-        # Use python3 to execute
-        subprocess.Popen(['python3', feeder_script_path, str(final_weight)])
-        print(f"Started feeder2.py with weight {final_weight}g")
+        import sys
+        # Use sys.executable to ensure it runs in the same virtual environment as server.py
+        subprocess.Popen([sys.executable, feeder_script_path, str(final_weight)])
+        print(f"Started feeder2.py with weight {final_weight}g using {sys.executable}")
     else:
         print(f"Warning: feeder2.py not found at {feeder_script_path}")
 
