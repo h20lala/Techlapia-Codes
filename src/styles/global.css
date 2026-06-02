@@ -6,6 +6,7 @@
     box-sizing: border-box;
     -webkit-tap-highlight-color: transparent;
     user-select: none; /* Disable text selection for kiosk mode */
+    -webkit-user-drag: none; /* Make elements non-grabbable */
 }
 
 /* Re-enable selection for inputs if ever added */

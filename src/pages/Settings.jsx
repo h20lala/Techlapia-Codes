@@ -3,6 +3,8 @@ import Layout from '../components/Layout.jsx';
 import Navigation from '../components/Navigation.jsx';
 import StatusCard from '../components/StatusCard.jsx';
 import CameraFeed from '../components/CameraFeed.jsx';
+import Keyboard from 'react-simple-keyboard';
+import 'react-simple-keyboard/build/css/index.css';
 
 const Settings = ({ onNavigate }) => {
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -21,8 +23,14 @@ const Settings = ({ onNavigate }) => {
         weight: 250,
         mock_weight: 20
     });
+
     const [density, setDensity] = useState(0);
     const [initialLoaded, setInitialLoaded] = useState(false);
+
+    // Keyboard state
+    const [showKeyboard, setShowKeyboard] = useState(false);
+    const [focusedInput, setFocusedInput] = useState(null);
+    const keyboard = useRef(null);
 
     // Fetch settings on mount
     useEffect(() => {
@@ -75,8 +83,45 @@ const Settings = ({ onNavigate }) => {
         const { name, value } = e.target;
         setInputs(prev => ({
             ...prev,
-            [name]: parseFloat(value) || 0
+            [name]: value === "" ? "" : (parseFloat(value) || 0)
         }));
+        if (keyboard.current) {
+            keyboard.current.setInput(value);
+        }
+    };
+
+    const handleInputFocus = (e) => {
+        const { name, value } = e.target;
+        setFocusedInput(name);
+        setShowKeyboard(true);
+        if (keyboard.current) {
+            keyboard.current.setInput(value.toString());
+        }
+    };
+
+    const onKeyboardChange = (inputVal) => {
+        if (focusedInput) {
+            setInputs(prev => ({
+                ...prev,
+                [focusedInput]: inputVal === "" ? "" : (parseFloat(inputVal) || 0)
+            }));
+        }
+    };
+
+    const onKeyPress = (button) => {
+        if (button === "{enter}") {
+            setShowKeyboard(false);
+        }
+    };
+
+    const numericLayout = {
+        default: [
+            "1 2 3",
+            "4 5 6",
+            "7 8 9",
+            "{bksp} 0 .",
+            "{enter}"
+        ]
     };
 
     const styles = {
@@ -134,12 +179,13 @@ const Settings = ({ onNavigate }) => {
 
                     {/* Initial Population Input */}
                     <div style={styles.inputGroup}>
-                        <span style={styles.label}>Initial Population (Tn)</span>
+                            <span style={styles.label}>Initial Population (Tn)</span>
                         <input
                             style={styles.input}
                             name="population"
                             value={inputs.population}
                             onChange={handleInputChange}
+                            onFocus={handleInputFocus}
                         />
                     </div>
 
@@ -149,15 +195,15 @@ const Settings = ({ onNavigate }) => {
                         <div style={styles.row}>
                             <div>
                                 <span style={{ fontSize: '0.65rem', color: '#98A2B3' }}>Length</span>
-                                <input style={styles.input} name="length" value={inputs.length} onChange={handleInputChange} />
+                                <input style={styles.input} name="length" value={inputs.length} onChange={handleInputChange} onFocus={handleInputFocus} />
                             </div>
                             <div>
                                 <span style={{ fontSize: '0.65rem', color: '#98A2B3' }}>Width</span>
-                                <input style={styles.input} name="width" value={inputs.width} onChange={handleInputChange} />
+                                <input style={styles.input} name="width" value={inputs.width} onChange={handleInputChange} onFocus={handleInputFocus} />
                             </div>
                             <div>
                                 <span style={{ fontSize: '0.65rem', color: '#98A2B3' }}>Depth</span>
-                                <input style={styles.input} name="depth" value={inputs.depth} onChange={handleInputChange} />
+                                <input style={styles.input} name="depth" value={inputs.depth} onChange={handleInputChange} onFocus={handleInputFocus} />
                             </div>
                         </div>
                     </div>
@@ -170,6 +216,7 @@ const Settings = ({ onNavigate }) => {
                             name="weight"
                             value={inputs.weight}
                             onChange={handleInputChange}
+                            onFocus={handleInputFocus}
                         />
                     </div>
 
@@ -181,6 +228,7 @@ const Settings = ({ onNavigate }) => {
                             name="mock_weight"
                             value={inputs.mock_weight}
                             onChange={handleInputChange}
+                            onFocus={handleInputFocus}
                         />
                     </div>
 
@@ -198,6 +246,26 @@ const Settings = ({ onNavigate }) => {
             <div style={{ width: '100%', height: '100%', background: '#000', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
                 <CameraFeed />
             </div>
+
+            {/* Virtual Keyboard Overlay */}
+            {showKeyboard && (
+                <div style={{ 
+                    position: 'fixed', bottom: 0, left: 0, width: '100%', 
+                    background: '#e4e7ec', zIndex: 9999, padding: '10px',
+                    boxShadow: '0px -4px 10px rgba(0,0,0,0.2)', color: '#000'
+                }}>
+                    <Keyboard
+                        keyboardRef={r => (keyboard.current = r)}
+                        layout={numericLayout}
+                        onChange={onKeyboardChange}
+                        onKeyPress={onKeyPress}
+                        display={{
+                            '{bksp}': 'delete',
+                            '{enter}': 'DONE / CLOSE'
+                        }}
+                    />
+                </div>
+            )}
         </Layout>
     );
 };
