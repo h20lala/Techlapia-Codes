@@ -37,6 +37,9 @@ servo2 = Servo(SERVO2_PIN, min_pulse_width=0.5/1000, max_pulse_width=2.5/1000)
 # Close both servos initially (gpiozero uses a range of -1 to 1; -1 is roughly 0 degrees/closed)
 servo1.value = -1.0
 servo2.value = -1.0
+time.sleep(1.0)
+servo1.value = None  # Cut Signal!
+servo2.value = None  # Cut Signal!
 
 
 def run_process():

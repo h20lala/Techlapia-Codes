@@ -1,9 +1,65 @@
 import React from 'react';
 
-const NotificationPanel = () => {
+const NotificationPanel = ({ sensorData }) => {
+    const notifications = [];
+
+    if (sensorData) {
+        if (sensorData.ph > 8.5 || sensorData.ph < 6.5) { // Assuming < 6.5 is also abnormal, or just > 8.5
+            // User specifically asked for "High pH Level", but let's cover abnormal
+            if (sensorData.ph > 8.5) {
+                notifications.push({
+                    title: "High pH Level",
+                    message: "pH LEVEL ABOVE SAFE THRESHOLD — AUTOMATED AERATION ACTIVATED. PLEASE CHECK WATER CHEMISTRY",
+                    color: "#F04438"
+                });
+            } else {
+                notifications.push({
+                    title: "Low pH Level",
+                    message: "pH LEVEL BELOW SAFE THRESHOLD. PLEASE CHECK WATER CHEMISTRY",
+                    color: "#F04438"
+                });
+            }
+        }
+        
+        if (sensorData.temp < 25 || sensorData.temp > 32) {
+            notifications.push({
+                title: "Temperature Out of Range",
+                message: "WATER TEMPERATURE OUT OF OPTIMAL RANGE — AUTOMATED COOLING/HEATING RESPONSE INITIATED",
+                color: "#F79009"
+            });
+        }
+        
+        if (sensorData.turbidity > 25) {
+            notifications.push({
+                title: "High Turbidity / Low Visibility",
+                message: "HIGH TURBIDITY DETECTED — FEEDING TEMPORARILY SUSPENDED AND AUTOMATED WATER CIRCULATION ENABLED",
+                color: "#F79009"
+            });
+        }
+        
+        if (sensorData.water_level < 50) {
+            notifications.push({
+                title: "Low Water Level",
+                message: "WATER LEVEL BELOW MINIMUM THRESHOLD — AUTOMATED REFILLING SYSTEM ACTIVATED. PLEASE INSPECT FOR POSSIBLE LEAKS",
+                color: "#F04438"
+            });
+        }
+    }
+
+    if (notifications.length === 0) {
+        notifications.push({
+            title: "Normal Condition",
+            message: "ALL WATER QUALITY PARAMETERS ARE WITHIN NORMAL RANGE",
+            color: "#12B76A" // Green
+        });
+    }
+
     const styles = {
         container: {
-            marginBottom: '4px'
+            marginBottom: '4px',
+            flex: 1, // Let it grow if needed
+            overflowY: 'auto', // Scroll if too many notifications
+            maxHeight: '120px' // Cap height so it doesn't break layout
         },
         header: {
             fontSize: '0.75rem',
@@ -14,10 +70,10 @@ const NotificationPanel = () => {
         box: {
             background: '#1D2939',
             borderRadius: '8px',
-            padding: '12px',
+            padding: '8px',
             textAlign: 'center',
-            border: '1px solid #475467', // Subtle border
-            minHeight: '60px', // Compact
+            border: '1px solid #475467',
+            marginBottom: '4px',
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
@@ -28,22 +84,24 @@ const NotificationPanel = () => {
             textTransform: 'uppercase',
             letterSpacing: '0.5px',
             marginBottom: '2px',
-            color: '#fff'
+            color: '#fff',
+            fontWeight: 'bold'
         },
         message: {
-            fontSize: '0.75rem',
+            fontSize: '0.65rem',
             fontWeight: 'bold',
-            color: '#66C2FF' // Light blue highlight
         }
     };
 
     return (
         <div style={styles.container}>
-            <span style={styles.header}>Notification</span>
-            <div style={styles.box}>
-                <div style={styles.title}>ALL WATER QUALITY</div>
-                <div style={styles.message}>WITHIN NORMAL RANGE</div>
-            </div>
+            <span style={styles.header}>Notifications</span>
+            {notifications.map((notif, index) => (
+                <div key={index} style={{...styles.box, borderLeft: `4px solid ${notif.color}`}}>
+                    <div style={styles.title}>{notif.title}</div>
+                    <div style={{...styles.message, color: notif.color}}>{notif.message}</div>
+                </div>
+            ))}
         </div>
     );
 };

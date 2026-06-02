@@ -169,7 +169,7 @@ const Dashboard = ({ onNavigate }) => {
                         </div>
                     </div>
 
-                    <NotificationPanel />
+                    <NotificationPanel sensorData={sensorData} />
                     <FeedingSchedule refreshTrigger={refreshTrigger} />
                     <ActionButtons onFeederTriggered={() => setRefreshTrigger(prev => prev + 1)} />
 
