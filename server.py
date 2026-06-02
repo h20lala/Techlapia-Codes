@@ -364,7 +364,7 @@ def toggle_water_filter():
         try:
             from gpiozero import OutputDevice
             # Adjust active_high=False if your relay works oppositely
-            water_pump_relay = OutputDevice(17, active_high=False, initial_value=False)
+            water_pump_relay = OutputDevice(21, active_high=False, initial_value=False)
         except Exception as e:
             print(f"Error initializing water pump relay: {e}")
             water_pump_relay = None

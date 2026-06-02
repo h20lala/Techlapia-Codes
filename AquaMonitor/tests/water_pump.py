@@ -4,7 +4,7 @@ from gpiozero import OutputDevice
 
 # --- PIN CONFIGURATION ---
 # Replace with the actual GPIO pin connected to your 5V relay IN pin
-RELAY_PIN = 17 # Example: GPIO 17 (Physical Pin 11)
+RELAY_PIN = 21 # Example: GPIO 21 (Physical Pin 40)
 
 # Initialize the relay (active_high=False if your relay module is active low, which is common for 5V Arduino relays)
 # Adjust active_high if your relay works oppositely
