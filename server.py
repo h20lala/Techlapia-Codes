@@ -351,8 +351,18 @@ def run_schedule():
 scheduler_thread = threading.Thread(target=run_schedule, daemon=True)
 scheduler_thread.start()
 
+# Global to track feeder subprocess
+feeder_process = None
+
 @app.route('/api/feed', methods=['POST'])
 def trigger_feed():
+    global feeder_process
+    
+    # Check if feeder is already running
+    if feeder_process is not None and feeder_process.poll() is None:
+        print("Feeder override is already in progress. Ignoring request.")
+        return jsonify({"success": False, "error": "Feeder is currently running."}), 409
+
     # Manual Feed Trigger
     print("Feeder triggered manually!")
     
@@ -373,7 +383,7 @@ def trigger_feed():
         import subprocess
         import sys
         # Use sys.executable to ensure it runs in the same virtual environment as server.py
-        subprocess.Popen([sys.executable, feeder_script_path, str(final_weight)])
+        feeder_process = subprocess.Popen([sys.executable, feeder_script_path, str(final_weight)])
         print(f"Started feeder2.py with weight {final_weight}g using {sys.executable}")
     else:
         print(f"Warning: feeder2.py not found at {feeder_script_path}")
