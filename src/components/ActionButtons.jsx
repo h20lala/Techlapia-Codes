@@ -1,11 +1,15 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import Keyboard from 'react-simple-keyboard';
+import 'react-simple-keyboard/build/css/index.css';
 
 const ActionButtons = ({ onFeederTriggered, initialWaterFilterState }) => {
-    const [showFeederInput, setShowFeederInput] = React.useState(false);
-    const [feederWeight, setFeederWeight] = React.useState('');
-    const [isWaterFilterOn, setIsWaterFilterOn] = React.useState(false);
+    const [showFeederInput, setShowFeederInput] = useState(false);
+    const [feederWeight, setFeederWeight] = useState('');
+    const [isWaterFilterOn, setIsWaterFilterOn] = useState(false);
+    const [showKeyboard, setShowKeyboard] = useState(false);
+    const keyboardRef = useRef(null);
 
-    React.useEffect(() => {
+    useEffect(() => {
         setIsWaterFilterOn(!!initialWaterFilterState);
     }, [initialWaterFilterState]);
 
@@ -138,12 +142,45 @@ const ActionButtons = ({ onFeederTriggered, initialWaterFilterState }) => {
                             style={styles.input} 
                             placeholder="Enter weight (g)" 
                             value={feederWeight} 
-                            onChange={(e) => setFeederWeight(e.target.value)} 
+                            onChange={(e) => {
+                                setFeederWeight(e.target.value);
+                                if (keyboardRef.current) {
+                                    keyboardRef.current.setInput(e.target.value);
+                                }
+                            }}
+                            onFocus={() => setShowKeyboard(true)}
                         />
                         <button style={{ ...styles.button, ...styles.feederBtn }} onClick={handleFeeder}>SUBMIT FEEDER</button>
                     </div>
                 )}
             </div>
+
+            {/* Virtual Keyboard Overlay */}
+            {showKeyboard && showFeederInput && (
+                <div style={{ 
+                    position: 'fixed', bottom: 0, left: 0, width: '100%', 
+                    background: '#1D2939', zIndex: 9999, padding: '10px',
+                    boxShadow: '0px -4px 10px rgba(0,0,0,0.5)', color: '#fff'
+                }}>
+                    <Keyboard
+                        keyboardRef={r => (keyboardRef.current = r)}
+                        layout={{
+                            default: ["1 2 3", "4 5 6", "7 8 9", "{bksp} 0 .", "{enter}"]
+                        }}
+                        theme={"hg-theme-default hg-layout-numeric numeric-theme"}
+                        onChange={val => {
+                            setFeederWeight(val);
+                        }}
+                        onKeyPress={button => {
+                            if (button === "{enter}") setShowKeyboard(false);
+                        }}
+                        display={{
+                            '{bksp}': '⌫ Delete',
+                            '{enter}': 'DONE / CLOSE'
+                        }}
+                    />
+                </div>
+            )}
         </div>
     );
 };
