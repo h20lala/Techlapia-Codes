@@ -351,40 +351,38 @@ def run_schedule():
 scheduler_thread = threading.Thread(target=run_schedule, daemon=True)
 scheduler_thread.start()
 
-# Global to track feeder subprocess
-feeder_process = None
-water_pump_process = None
-
 @app.route('/api/water-filter', methods=['POST'])
 def toggle_water_filter():
-    global water_pump_process
-    
     req_data = request.get_json(silent=True) or {}
     state = req_data.get('state') # "on" or "off"
     
-    script_path = os.path.join(os.path.dirname(__file__), 'AquaMonitor', 'tests', 'water_pump.py')
-    
-    if state == "on":
-        if water_pump_process is None or water_pump_process.poll() is not None:
-            import subprocess
-            import sys
-            water_pump_process = subprocess.Popen([sys.executable, script_path, "on"])
+    # We define the pin dynamically if it hasn't been initialized yet
+    # Or rely on a globally initialized one. 
+    # To keep it simple, we initialize it globally at the top or inside the function.
+    global water_pump_relay
+    if 'water_pump_relay' not in globals() or water_pump_relay is None:
+        try:
+            from gpiozero import OutputDevice
+            # Adjust active_high=False if your relay works oppositely
+            water_pump_relay = OutputDevice(17, active_high=False, initial_value=False)
+        except Exception as e:
+            print(f"Error initializing water pump relay: {e}")
+            water_pump_relay = None
+
+    if water_pump_relay:
+        if state == "on":
+            water_pump_relay.on()
             print("Water pump started.")
             return jsonify({"success": True, "state": "on"})
-        else:
-            return jsonify({"success": True, "message": "Already running", "state": "on"})
-            
-    elif state == "off":
-        if water_pump_process is not None and water_pump_process.poll() is None:
-            water_pump_process.terminate()
-            water_pump_process.wait()
-            water_pump_process = None
+        elif state == "off":
+            water_pump_relay.off()
             print("Water pump stopped.")
             return jsonify({"success": True, "state": "off"})
-        else:
-            return jsonify({"success": True, "message": "Already stopped", "state": "off"})
             
-    return jsonify({"success": False, "error": "Invalid state"}), 400
+    return jsonify({"success": False, "error": "Relay not initialized or invalid state"}), 400
+
+# Global to track feeder subprocess
+feeder_process = None
 
 @app.route('/api/feed', methods=['POST'])
 def trigger_feed():
