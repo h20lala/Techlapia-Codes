@@ -3,6 +3,8 @@ import Dashboard from './pages/Dashboard.jsx';
 import Settings from './pages/Settings.jsx';
 import LogRecords from './pages/LogRecords.jsx';
 
+import GlobalDragScroll from './components/GlobalDragScroll.jsx';
+
 function App() {
     const [currentPage, setCurrentPage] = useState('dashboard');
 
@@ -25,6 +27,7 @@ function App() {
 
     return (
         <div className="app-container">
+            <GlobalDragScroll />
             {renderPage()}
         </div>
     );
