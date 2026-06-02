@@ -169,7 +169,7 @@ const ActionButtons = ({ onFeederTriggered, initialWaterFilterState }) => {
                         layout={{
                             default: ["1 2 3", "4 5 6", "7 8 9", "{bksp} 0 .", "{enter}"]
                         }}
-                        theme={"hg-theme-default hg-layout-numeric numeric-theme"}
+                        theme={"hg-theme-default hg-layout-numeric numeric-theme-dark"}
                         onChange={val => {
                             setFeederWeight(val);
                         }}

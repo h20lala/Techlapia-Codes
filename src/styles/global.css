@@ -15,14 +15,21 @@ input, textarea {
 }
 
 /* Virtual Keyboard Numpad Styling */
-.numeric-theme {
+.numeric-theme-dark {
     max-width: 400px;
     margin: 0 auto;
     font-size: 1.2rem;
+    background-color: transparent !important;
 }
-.numeric-theme .hg-button {
+.numeric-theme-dark .hg-button {
     height: 60px;
     font-weight: bold;
+    background: #344054 !important;
+    color: #fff !important;
+    border-bottom: 2px solid #101828 !important;
+}
+.numeric-theme-dark .hg-button:active {
+    background: #475467 !important;
 }
 
 body {

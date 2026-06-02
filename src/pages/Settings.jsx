@@ -251,13 +251,13 @@ const Settings = ({ onNavigate }) => {
             {showKeyboard && (
                 <div style={{ 
                     position: 'fixed', bottom: 0, left: 0, width: '100%', 
-                    background: '#e4e7ec', zIndex: 9999, padding: '10px',
-                    boxShadow: '0px -4px 10px rgba(0,0,0,0.2)', color: '#000'
+                    background: '#1D2939', zIndex: 9999, padding: '10px',
+                    boxShadow: '0px -4px 10px rgba(0,0,0,0.5)', color: '#fff'
                 }}>
                     <Keyboard
                         keyboardRef={r => (keyboard.current = r)}
                         layout={numericLayout}
-                        theme={"hg-theme-default hg-layout-numeric numeric-theme"}
+                        theme={"hg-theme-default hg-layout-numeric numeric-theme-dark"}
                         onChange={onKeyboardChange}
                         onKeyPress={onKeyPress}
                         display={{
