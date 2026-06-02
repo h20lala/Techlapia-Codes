@@ -457,7 +457,36 @@ def sync_to_supabase():
                     s_row.get('ph', 0), s_row.get('water_level', 0), s_row.get('turbidity', 0)
                 ))
                 print(f"Background sync: Pulled missing log from Supabase ({s_row.get('date')} {s_row.get('time')})")
+
+        # 3. PULL DELETIONS: Supabase -> Local
+        # Fetch up to 1000 logs from Supabase just to check for deletions
+        url_del = f"{SUPABASE_URL}/rest/v1/logs?select=date,time&order=id.desc&limit=1000"
+        req_del = urllib.request.Request(
+            url_del,
+            headers={
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}"
+            }
+        )
+        with urllib.request.urlopen(req_del) as response:
+            supa_all = json.loads(response.read().decode())
+            
+        supa_set = {f"{r.get('date')}_{r.get('time')}" for r in supa_all}
         
+        # Check our local synced logs (top 1000 to match)
+        c.execute('SELECT id, date, time FROM logs WHERE synced = 1 ORDER BY id DESC LIMIT 1000')
+        local_synced = c.fetchall()
+        
+        for l_row in local_synced:
+            l_id, l_date, l_time = l_row
+            key = f"{l_date}_{l_time}"
+            if key not in supa_set:
+                # If Supabase has >= 1000 rows, there's a chance this row just fell off the pagination end.
+                # So only delete if Supabase returned < 1000 rows, OR we know this row is recent.
+                if len(supa_all) < 1000 or (l_row != local_synced[-1]):
+                    c.execute('DELETE FROM logs WHERE id = ?', (l_id,))
+                    print(f"Background sync: Deleted local log ID {l_id} because it was removed from Supabase")
+
         conn.commit()
         conn.close()
     except Exception as e:
