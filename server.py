@@ -351,35 +351,40 @@ def run_schedule():
 scheduler_thread = threading.Thread(target=run_schedule, daemon=True)
 scheduler_thread.start()
 
+# Global to track processes
+water_pump_process = None
+feeder_process = None
+
 @app.route('/api/water-filter', methods=['POST'])
 def toggle_water_filter():
+    global water_pump_process
     req_data = request.get_json(silent=True) or {}
     state = req_data.get('state') # "on" or "off"
     
-    # We define the pin dynamically if it hasn't been initialized yet
-    # Or rely on a globally initialized one. 
-    # To keep it simple, we initialize it globally at the top or inside the function.
-    global water_pump_relay
-    if 'water_pump_relay' not in globals() or water_pump_relay is None:
-        try:
-            from gpiozero import OutputDevice
-            # Adjust active_high=False if your relay works oppositely
-            water_pump_relay = OutputDevice(21, active_high=False, initial_value=False)
-        except Exception as e:
-            print(f"Error initializing water pump relay: {e}")
-            water_pump_relay = None
+    script_path = os.path.join(os.path.dirname(__file__), 'AquaMonitor', 'tests', 'water_pump.py')
+    import subprocess
+    import sys
 
-    if water_pump_relay:
-        if state == "on":
-            water_pump_relay.on()
-            print("Water pump started.")
+    if state == "on":
+        if water_pump_process is None or water_pump_process.poll() is not None:
+            water_pump_process = subprocess.Popen([sys.executable, script_path, "on"])
+            print("Water pump started.", flush=True)
             return jsonify({"success": True, "state": "on"})
-        elif state == "off":
-            water_pump_relay.off()
-            print("Water pump stopped.")
-            return jsonify({"success": True, "state": "off"})
+        return jsonify({"success": True, "message": "Already running", "state": "on"})
             
-    return jsonify({"success": False, "error": "Relay not initialized or invalid state"}), 400
+    elif state == "off":
+        # First terminate the 'on' loop if it's running
+        if water_pump_process is not None and water_pump_process.poll() is None:
+            water_pump_process.terminate()
+            water_pump_process.wait()
+            water_pump_process = None
+        
+        # Then explicitly run the off script to cleanly drive it low before exiting
+        subprocess.run([sys.executable, script_path, "off"])
+        print("Water pump stopped.", flush=True)
+        return jsonify({"success": True, "state": "off"})
+            
+    return jsonify({"success": False, "error": "Invalid state"}), 400
 
 # Global to track feeder subprocess
 feeder_process = None
@@ -390,11 +395,11 @@ def trigger_feed():
     
     # Check if feeder is already running
     if feeder_process is not None and feeder_process.poll() is None:
-        print("Feeder override is already in progress. Ignoring request.")
+        print("Feeder override is already in progress. Ignoring request.", flush=True)
         return jsonify({"success": False, "error": "Feeder is currently running."}), 409
 
     # Manual Feed Trigger
-    print("Feeder triggered manually!")
+    print("Feeder triggered manually!", flush=True)
     
     # Check if weight was passed in request JSON
     req_data = request.get_json(silent=True) or {}
