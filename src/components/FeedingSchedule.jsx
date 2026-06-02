@@ -34,7 +34,7 @@ const FeedingSchedule = ({ refreshTrigger }) => {
             background: '#1D2939',
             borderRadius: '8px',
             overflowY: 'auto',
-            maxHeight: '120px', // Set max height to allow scrolling
+            maxHeight: '80px', // Set max height to show ~2 items + header
             border: '1px solid #475467'
         },
         table: {

@@ -395,6 +395,8 @@ def sync_to_supabase():
     try:
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
+        
+        # 1. PUSH: Local -> Supabase
         c.execute('SELECT id, date, time, amount_g, weight_g, population, temperature, ph, water_level, turbidity FROM logs WHERE synced = 0')
         unsynced_rows = c.fetchall()
         
@@ -429,10 +431,37 @@ def sync_to_supabase():
                     c.execute('UPDATE logs SET synced = 1 WHERE id = ?', (log_id,))
                     conn.commit()
                     print(f"Background sync: Pushed missing log ID {log_id} to Supabase")
+
+        # 2. PULL: Supabase -> Local
+        url_pull = f"{SUPABASE_URL}/rest/v1/logs?select=*&order=id.desc&limit=100"
+        req_pull = urllib.request.Request(
+            url_pull,
+            headers={
+                "apikey": SUPABASE_KEY,
+                "Authorization": f"Bearer {SUPABASE_KEY}"
+            }
+        )
+        with urllib.request.urlopen(req_pull) as response:
+            supa_data = json.loads(response.read().decode())
+            
+        for s_row in supa_data:
+            # Check if this exact date and time exist locally
+            c.execute('SELECT id FROM logs WHERE date = ? AND time = ?', (s_row.get('date'), s_row.get('time')))
+            if not c.fetchone():
+                c.execute('''
+                    INSERT INTO logs (date, time, amount_g, weight_g, population, temperature, ph, water_level, turbidity, synced)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+                ''', (
+                    s_row.get('date', ''), s_row.get('time', ''), s_row.get('amount_g', 0),
+                    s_row.get('weight_g', 0), s_row.get('population', 0), s_row.get('temperature', 0),
+                    s_row.get('ph', 0), s_row.get('water_level', 0), s_row.get('turbidity', 0)
+                ))
+                print(f"Background sync: Pulled missing log from Supabase ({s_row.get('date')} {s_row.get('time')})")
         
+        conn.commit()
         conn.close()
     except Exception as e:
-        print(f"Background sync to Supabase failed: {e}")
+        print(f"Background sync to/from Supabase failed: {e}")
 
 def run_schedule():
     import time
