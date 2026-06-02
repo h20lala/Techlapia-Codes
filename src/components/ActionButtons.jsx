@@ -97,7 +97,9 @@ const ActionButtons = ({ onFeederTriggered, initialWaterFilterState }) => {
             width: '100%',
             padding: '8px',
             borderRadius: '6px',
-            border: '1px solid #ccc',
+            border: '1px solid rgba(255,255,255,0.2)',
+            background: 'rgba(0,0,0,0.2)',
+            color: '#fff',
             fontSize: '0.75rem',
             marginBottom: '4px',
             boxSizing: 'border-box'

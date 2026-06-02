@@ -11,7 +11,7 @@ const CameraFeed = () => {
             <img
                 src={streamUrl}
                 alt="Connecting to RPi Camera..."
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                style={{ width: '100%', height: '100%', objectFit: 'contain', transform: 'scaleX(-1)' }}
                 onError={() => setError(true)}
             />
 
