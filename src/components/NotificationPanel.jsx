@@ -1,28 +1,29 @@
 import React from 'react';
 
 const NotificationPanel = ({ sensorData }) => {
-    const notifications = [];
+    let finalNotification = null;
+    const anomalies = [];
 
     if (sensorData) {
-        if (sensorData.ph > 8.5 || sensorData.ph < 6.5) { // Assuming < 6.5 is also abnormal, or just > 8.5
-            // User specifically asked for "High pH Level", but let's cover abnormal
-            if (sensorData.ph > 8.5) {
-                notifications.push({
-                    title: "High pH Level",
-                    message: "pH LEVEL ABOVE SAFE THRESHOLD — AUTOMATED AERATION ACTIVATED. PLEASE CHECK WATER CHEMISTRY",
-                    color: "#F04438"
-                });
-            } else {
-                notifications.push({
-                    title: "Low pH Level",
-                    message: "pH LEVEL BELOW SAFE THRESHOLD. PLEASE CHECK WATER CHEMISTRY",
-                    color: "#F04438"
-                });
-            }
+        if (sensorData.ph > 8.5) {
+            anomalies.push({
+                shortTitle: "High pH",
+                title: "High pH Level",
+                message: "pH LEVEL ABOVE SAFE THRESHOLD — AUTOMATED AERATION ACTIVATED. PLEASE CHECK WATER CHEMISTRY",
+                color: "#F04438"
+            });
+        } else if (sensorData.ph < 6.5) {
+            anomalies.push({
+                shortTitle: "Low pH",
+                title: "Low pH Level",
+                message: "pH LEVEL BELOW SAFE THRESHOLD. PLEASE CHECK WATER CHEMISTRY",
+                color: "#F04438"
+            });
         }
         
         if (sensorData.temp < 25 || sensorData.temp > 32) {
-            notifications.push({
+            anomalies.push({
+                shortTitle: sensorData.temp < 25 ? "Low Temp" : "High Temp",
                 title: "Temperature Out of Range",
                 message: "WATER TEMPERATURE OUT OF OPTIMAL RANGE — AUTOMATED COOLING/HEATING RESPONSE INITIATED",
                 color: "#F79009"
@@ -30,7 +31,8 @@ const NotificationPanel = ({ sensorData }) => {
         }
         
         if (sensorData.turbidity > 25) {
-            notifications.push({
+            anomalies.push({
+                shortTitle: "High Turbidity",
                 title: "High Turbidity / Low Visibility",
                 message: "HIGH TURBIDITY DETECTED — FEEDING TEMPORARILY SUSPENDED AND AUTOMATED WATER CIRCULATION ENABLED",
                 color: "#F79009"
@@ -38,7 +40,8 @@ const NotificationPanel = ({ sensorData }) => {
         }
         
         if (sensorData.water_level < 50) {
-            notifications.push({
+            anomalies.push({
+                shortTitle: "Low Water Level",
                 title: "Low Water Level",
                 message: "WATER LEVEL BELOW MINIMUM THRESHOLD — AUTOMATED REFILLING SYSTEM ACTIVATED. PLEASE INSPECT FOR POSSIBLE LEAKS",
                 color: "#F04438"
@@ -46,12 +49,24 @@ const NotificationPanel = ({ sensorData }) => {
         }
     }
 
-    if (notifications.length === 0) {
-        notifications.push({
+    if (anomalies.length === 0) {
+        finalNotification = {
             title: "Normal Condition",
             message: "ALL WATER QUALITY PARAMETERS ARE WITHIN NORMAL RANGE",
             color: "#12B76A" // Green
-        });
+        };
+    } else if (anomalies.length === 1) {
+        finalNotification = anomalies[0];
+    } else {
+        // Multiple anomalies
+        const shortTitles = anomalies.map(a => a.shortTitle).join(" AND ");
+        const combinedMessage = anomalies.map(a => a.message).join(" | ");
+        
+        finalNotification = {
+            title: `MULTIPLE ANOMALIES: ${shortTitles.toUpperCase()}`,
+            message: combinedMessage,
+            color: "#F04438" // Red for critical multi-failure
+        };
     }
 
     const styles = {
@@ -70,35 +85,33 @@ const NotificationPanel = ({ sensorData }) => {
     return (
         <div style={styles.container}>
             <span style={styles.header}>Notifications</span>
-            {notifications.map((notif, index) => (
-                <div key={index} style={{
-                    background: '#1D2939',
-                    borderRadius: '8px',
-                    padding: '8px',
-                    textAlign: 'center',
-                    border: '1px solid #475467',
-                    borderLeft: `4px solid ${notif.color}`,
-                    marginBottom: '4px',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    alignItems: 'center'
-                }}>
-                    <div style={{
-                        fontSize: '0.65rem',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px',
-                        marginBottom: '2px',
-                        color: '#fff',
-                        fontWeight: 'bold'
-                    }}>{notif.title}</div>
-                    <div style={{
-                        fontSize: '0.65rem',
-                        fontWeight: 'bold',
-                        color: notif.color
-                    }}>{notif.message}</div>
-                </div>
-            ))}
+            <div style={{
+                background: '#1D2939',
+                borderRadius: '8px',
+                padding: '8px',
+                textAlign: 'center',
+                border: '1px solid #475467',
+                borderLeft: `4px solid ${finalNotification.color}`,
+                marginBottom: '4px',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center'
+            }}>
+                <div style={{
+                    fontSize: '0.65rem',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.5px',
+                    marginBottom: '2px',
+                    color: '#fff',
+                    fontWeight: 'bold'
+                }}>{finalNotification.title}</div>
+                <div style={{
+                    fontSize: '0.65rem',
+                    fontWeight: 'bold',
+                    color: finalNotification.color
+                }}>{finalNotification.message}</div>
+            </div>
         </div>
     );
 };
