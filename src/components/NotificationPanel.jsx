@@ -4,7 +4,7 @@ const NotificationPanel = ({ sensorData }) => {
     let finalNotification = null;
     const anomalies = [];
 
-    if (sensorData) {
+    if (sensorData && sensorData.temp !== "-") {
         if (sensorData.ph > 8.5) {
             anomalies.push({
                 shortTitle: "High pH",
@@ -49,7 +49,13 @@ const NotificationPanel = ({ sensorData }) => {
         }
     }
 
-    if (anomalies.length === 0) {
+    if (!sensorData || sensorData.temp === "-") {
+        finalNotification = {
+            title: "CONNECTING TO SENSORS...",
+            message: "WAITING FOR INITIAL SENSOR DATA PAYLOAD FROM HARDWARE",
+            color: "#98A2B3" // Gray
+        };
+    } else if (anomalies.length === 0) {
         finalNotification = {
             title: "Normal Condition",
             message: "ALL WATER QUALITY PARAMETERS ARE WITHIN NORMAL RANGE",

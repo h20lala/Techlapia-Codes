@@ -30,10 +30,10 @@ const SensorStrip = ({ label, value, status }) => {
 const Dashboard = ({ onNavigate }) => {
     const [currentTime, setCurrentTime] = useState(new Date());
     const [sensorData, setSensorData] = useState({
-        temp: 25.0,
-        ph: 7.0,
-        turbidity: 0,
-        water_level: 75,
+        temp: "-",
+        ph: "-",
+        turbidity: "-",
+        water_level: "-",
         water_filter_on: false
     });
     const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -71,6 +71,7 @@ const Dashboard = ({ onNavigate }) => {
 
     // Determine Status based on Table 1 ref
     const getStatus = (val, type) => {
+        if (val === "-") return "-";
         if (type === 'temp') {
             if (val < 25) return 'Low';
             if (val > 32) return 'High';
@@ -150,22 +151,22 @@ const Dashboard = ({ onNavigate }) => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             <SensorStrip
                                 label="Temperature"
-                                value={`${sensorData.temp.toFixed(1)}° C`}
+                                value={sensorData.temp === "-" ? "-" : `${Number(sensorData.temp).toFixed(1)}° C`}
                                 status={getStatus(sensorData.temp, 'temp')}
                             />
                             <SensorStrip
                                 label="Turbidity"
-                                value={`${sensorData.turbidity} NTU`}
+                                value={sensorData.turbidity === "-" ? "-" : `${sensorData.turbidity} NTU`}
                                 status={getStatus(sensorData.turbidity, 'turb')}
                             />
                             <SensorStrip
                                 label="pH Level"
-                                value={sensorData.ph.toFixed(1)}
+                                value={sensorData.ph === "-" ? "-" : Number(sensorData.ph).toFixed(1)}
                                 status={getStatus(sensorData.ph, 'ph')}
                             />
                             <SensorStrip
                                 label="Water Level"
-                                value={`${sensorData.water_level} cm`}
+                                value={sensorData.water_level === "-" ? "-" : `${sensorData.water_level} cm`}
                                 status={getStatus(sensorData.water_level, 'level')}
                             />
                         </div>
