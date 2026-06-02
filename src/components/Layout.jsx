@@ -11,7 +11,8 @@ const Layout = ({ children, sidebar }) => {
         container: {
             display: 'flex',
             flexWrap: 'wrap',
-            minHeight: '100vh',
+            height: '100vh',
+            overflowY: 'auto',
             gap: 'var(--spacing-md)',
             padding: 'var(--spacing-md)',
             background: 'var(--color-primary)',
