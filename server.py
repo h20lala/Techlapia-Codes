@@ -17,12 +17,8 @@ load_dotenv()
 # Initialize Supabase
 import urllib.request
 import json
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-if SUPABASE_URL and SUPABASE_KEY:
-    print("Supabase keys loaded. Will send logs via REST API.")
-else:
-    print("Supabase keys missing.")
+SUPABASE_URL = "https://qekehslduothjlhxzmbw.supabase.co"
+SUPABASE_KEY = "sb_publishable_flpDIdOuSh5DNedl9wqjhw_qOfz1DZy"
 
 # --- SQLITE DB SETUP ---
 DB_FILE = 'techlapia.db'
@@ -54,7 +50,7 @@ def init_db():
             weight REAL,
             mock_weight REAL DEFAULT 20
         )
-    ''')
+    ''') 
     try:
         c.execute('ALTER TABLE settings ADD COLUMN mock_weight REAL DEFAULT 20')
     except sqlite3.OperationalError:
@@ -82,6 +78,7 @@ try:
     import busio
     import adafruit_ads1x15.ads1115 as ADS
     from adafruit_ads1x15.analog_in import AnalogIn
+    from adafruit_ads1x15.ads1x15 import Pin
     from gpiozero import DigitalInputDevice
     import glob
     
@@ -90,7 +87,7 @@ try:
         i2c = busio.I2C(board.SCL, board.SDA)
         ads = ADS.ADS1115(i2c)
         ads.gain = 1
-        ph_chan = AnalogIn(ads, ADS.P0)
+        ph_chan = AnalogIn(ads, Pin.A0)
         PH_MOCK = False
         print("pH sensor initialized successfully.")
     except Exception as e:
