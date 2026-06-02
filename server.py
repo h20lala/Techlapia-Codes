@@ -196,8 +196,28 @@ def read_water_level():
 
 @app.route('/api/sensors')
 def get_sensors():
+    global last_temp_state, user_overridden, water_pump_process
+    
+    current_temp = read_temp()
+    
+    # Auto water-filter logic for high temp
+    if current_temp > 32:
+        if last_temp_state == "normal":
+            # Temp just crossed threshold to high
+            if water_pump_process is None or water_pump_process.poll() is not None:
+                start_water_pump()
+            last_temp_state = "high"
+            user_overridden = False # New state transition resets override
+    elif current_temp <= 32:
+        if last_temp_state == "high":
+            # Temp dropped back to normal
+            if not user_overridden and (water_pump_process is not None and water_pump_process.poll() is None):
+                stop_water_pump()
+            last_temp_state = "normal"
+            user_overridden = False
+
     data = {
-        "temperature": read_temp(),
+        "temperature": current_temp,
         "ph": read_ph(),
         "turbidity": read_turbidity(),
         "water_level": read_water_level(),
@@ -351,37 +371,54 @@ def run_schedule():
 scheduler_thread = threading.Thread(target=run_schedule, daemon=True)
 scheduler_thread.start()
 
-# Global to track processes
+# Global to track processes and states
 water_pump_process = None
 feeder_process = None
+user_overridden = False
+last_temp_state = "normal"
+
+def start_water_pump():
+    global water_pump_process
+    import subprocess
+    import sys
+    script_path = os.path.join(os.path.dirname(__file__), 'AquaMonitor', 'tests', 'water_pump.py')
+    if water_pump_process is None or water_pump_process.poll() is not None:
+        water_pump_process = subprocess.Popen([sys.executable, script_path, "on"])
+        print("Water pump started.", flush=True)
+        return True
+    return False
+
+def stop_water_pump():
+    global water_pump_process
+    import subprocess
+    import sys
+    script_path = os.path.join(os.path.dirname(__file__), 'AquaMonitor', 'tests', 'water_pump.py')
+    
+    # First terminate the 'on' loop if it's running
+    if water_pump_process is not None and water_pump_process.poll() is None:
+        water_pump_process.terminate()
+        water_pump_process.wait()
+        water_pump_process = None
+        
+    # Then explicitly run the off script to cleanly drive it low before exiting
+    subprocess.run([sys.executable, script_path, "off"])
+    print("Water pump stopped.", flush=True)
 
 @app.route('/api/water-filter', methods=['POST'])
 def toggle_water_filter():
-    global water_pump_process
+    global user_overridden
     req_data = request.get_json(silent=True) or {}
     state = req_data.get('state') # "on" or "off"
     
-    script_path = os.path.join(os.path.dirname(__file__), 'AquaMonitor', 'tests', 'water_pump.py')
-    import subprocess
-    import sys
+    user_overridden = True # Mark that user has manually intervened
 
     if state == "on":
-        if water_pump_process is None or water_pump_process.poll() is not None:
-            water_pump_process = subprocess.Popen([sys.executable, script_path, "on"])
-            print("Water pump started.", flush=True)
+        if start_water_pump():
             return jsonify({"success": True, "state": "on"})
         return jsonify({"success": True, "message": "Already running", "state": "on"})
             
     elif state == "off":
-        # First terminate the 'on' loop if it's running
-        if water_pump_process is not None and water_pump_process.poll() is None:
-            water_pump_process.terminate()
-            water_pump_process.wait()
-            water_pump_process = None
-        
-        # Then explicitly run the off script to cleanly drive it low before exiting
-        subprocess.run([sys.executable, script_path, "off"])
-        print("Water pump stopped.", flush=True)
+        stop_water_pump()
         return jsonify({"success": True, "state": "off"})
             
     return jsonify({"success": False, "error": "Invalid state"}), 400
