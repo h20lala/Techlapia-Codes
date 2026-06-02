@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Layout from '../components/Layout.jsx';
 import Navigation from '../components/Navigation.jsx';
 import StatusCard from '../components/StatusCard.jsx';
@@ -257,10 +257,11 @@ const Settings = ({ onNavigate }) => {
                     <Keyboard
                         keyboardRef={r => (keyboard.current = r)}
                         layout={numericLayout}
+                        theme={"hg-theme-default hg-layout-numeric numeric-theme"}
                         onChange={onKeyboardChange}
                         onKeyPress={onKeyPress}
                         display={{
-                            '{bksp}': 'delete',
+                            '{bksp}': '⌫ Delete',
                             '{enter}': 'DONE / CLOSE'
                         }}
                     />
