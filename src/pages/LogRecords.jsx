@@ -32,7 +32,7 @@ const LogRecords = ({ onNavigate }) => {
         return () => clearInterval(interval);
     }, []);
 
-    const [selectedId, setSelectedId] = useState(null);
+    const [selectedIds, setSelectedIds] = useState([]);
 
     const handleSavePDF = () => {
         const doc = new jsPDF();
@@ -53,15 +53,34 @@ const LogRecords = ({ onNavigate }) => {
     };
 
     const handleDelete = async () => {
-        if (selectedId) {
+        if (selectedIds.length > 0) {
             try {
-                await fetch(`http://${window.location.hostname}:5000/api/logs/${selectedId}`, { method: 'DELETE' });
-                setLogs(logs.filter(log => log.id !== selectedId));
-                setSelectedId(null);
+                // Delete all selected logs
+                await Promise.all(selectedIds.map(id => 
+                    fetch(`http://${window.location.hostname}:5000/api/logs/${id}`, { method: 'DELETE' })
+                ));
+                
+                // Update local state
+                setLogs(logs.filter(log => !selectedIds.includes(log.id)));
+                setSelectedIds([]);
             } catch (err) {
-                console.error("Error deleting log:", err);
+                console.error("Error deleting logs:", err);
             }
         }
+    };
+
+    const toggleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedIds(logs.map(log => log.id));
+        } else {
+            setSelectedIds([]);
+        }
+    };
+
+    const toggleSelectRow = (id) => {
+        setSelectedIds(prev => 
+            prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+        );
     };
 
     const styles = {
@@ -151,11 +170,11 @@ const LogRecords = ({ onNavigate }) => {
                             SAVE AS PDF
                         </button>
                         <button
-                            style={{ ...styles.actionBtn, ...styles.deleteBtn, opacity: selectedId ? 1 : 0.5 }}
+                            style={{ ...styles.actionBtn, ...styles.deleteBtn, opacity: selectedIds.length > 0 ? 1 : 0.5 }}
                             onClick={handleDelete}
-                            disabled={!selectedId}
+                            disabled={selectedIds.length === 0}
                         >
-                            DELETE
+                            DELETE SELECTED ({selectedIds.length})
                         </button>
                     </div>
 
@@ -168,6 +187,13 @@ const LogRecords = ({ onNavigate }) => {
                 <table style={styles.table}>
                     <thead>
                         <tr>
+                            <th style={styles.th}>
+                                <input 
+                                    type="checkbox" 
+                                    checked={logs.length > 0 && selectedIds.length === logs.length}
+                                    onChange={toggleSelectAll}
+                                />
+                            </th>
                             <th style={styles.th}>Date</th>
                             <th style={styles.th}>Length</th>
                             <th style={styles.th}>Feed</th>
@@ -183,9 +209,17 @@ const LogRecords = ({ onNavigate }) => {
                         {logs.map((log) => (
                             <tr
                                 key={log.id}
-                                style={selectedId === log.id ? styles.selectedRow : {}}
-                                onClick={() => setSelectedId(log.id)}
+                                style={selectedIds.includes(log.id) ? styles.selectedRow : {}}
+                                onClick={() => toggleSelectRow(log.id)}
                             >
+                                <td style={styles.td}>
+                                    <input 
+                                        type="checkbox" 
+                                        checked={selectedIds.includes(log.id)}
+                                        onChange={() => toggleSelectRow(log.id)}
+                                        onClick={(e) => e.stopPropagation()}
+                                    />
+                                </td>
                                 <td style={styles.td}>{log.date}</td>
                                 <td style={styles.td}>{log.len}</td>
                                 <td style={styles.td}>{log.feed}</td>

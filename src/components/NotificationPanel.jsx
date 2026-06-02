@@ -72,7 +72,8 @@ const NotificationPanel = ({ sensorData }) => {
     const styles = {
         container: {
             marginBottom: '4px',
-            overflowY: 'auto'
+            overflowY: 'auto',
+            flexShrink: 0
         },
         header: {
             fontSize: '0.75rem',
