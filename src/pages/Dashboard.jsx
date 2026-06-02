@@ -33,7 +33,8 @@ const Dashboard = ({ onNavigate }) => {
         temp: 25.0,
         ph: 7.0,
         turbidity: 0,
-        water_level: 75
+        water_level: 75,
+        water_filter_on: false
     });
     const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -54,7 +55,8 @@ const Dashboard = ({ onNavigate }) => {
                         temp: data.temperature,
                         ph: data.ph,
                         turbidity: data.turbidity,
-                        water_level: data.water_level
+                        water_level: data.water_level,
+                        water_filter_on: data.water_filter_on
                     });
                 }
             } catch (error) {
@@ -100,7 +102,7 @@ const Dashboard = ({ onNavigate }) => {
             background: 'rgba(255,255,255,0.8)', padding: '8px 16px', borderRadius: '20px',
         },
         sidebarContainer: {
-            display: 'flex', flexDirection: 'column', gap: '6px', height: '100%',
+            display: 'flex', flexDirection: 'column', gap: '6px', minHeight: '100%',
             color: '#fff', fontFamily: 'var(--font-family-main)'
         },
         headerRow: {
@@ -171,7 +173,10 @@ const Dashboard = ({ onNavigate }) => {
 
                     <NotificationPanel sensorData={sensorData} />
                     <FeedingSchedule refreshTrigger={refreshTrigger} />
-                    <ActionButtons onFeederTriggered={() => setRefreshTrigger(prev => prev + 1)} />
+                    <ActionButtons 
+                        onFeederTriggered={() => setRefreshTrigger(prev => prev + 1)}
+                        initialWaterFilterState={sensorData.water_filter_on}
+                    />
 
                     <Navigation onNavigate={onNavigate} activePage="dashboard" />
                 </div>

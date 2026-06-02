@@ -1,8 +1,13 @@
 import React from 'react';
 
-const ActionButtons = ({ onFeederTriggered }) => {
+const ActionButtons = ({ onFeederTriggered, initialWaterFilterState }) => {
     const [showFeederInput, setShowFeederInput] = React.useState(false);
     const [feederWeight, setFeederWeight] = React.useState('');
+    const [isWaterFilterOn, setIsWaterFilterOn] = React.useState(false);
+
+    React.useEffect(() => {
+        setIsWaterFilterOn(!!initialWaterFilterState);
+    }, [initialWaterFilterState]);
 
     const handleFeeder = async () => {
         if (!showFeederInput) {
@@ -31,7 +36,6 @@ const ActionButtons = ({ onFeederTriggered }) => {
             console.error("Failed to trigger feeder", error);
         }
     };
-    const [isWaterFilterOn, setIsWaterFilterOn] = React.useState(false);
 
     const toggleWaterFilter = async () => {
         const newState = !isWaterFilterOn;
