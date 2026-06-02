@@ -57,9 +57,7 @@ const NotificationPanel = ({ sensorData }) => {
     const styles = {
         container: {
             marginBottom: '4px',
-            flex: 1, // Let it grow if needed
-            overflowY: 'auto', // Scroll if too many notifications
-            maxHeight: '120px' // Cap height so it doesn't break layout
+            overflowY: 'auto'
         },
         header: {
             fontSize: '0.75rem',
