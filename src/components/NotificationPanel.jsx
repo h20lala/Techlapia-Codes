@@ -64,30 +64,6 @@ const NotificationPanel = ({ sensorData }) => {
             color: '#98A2B3',
             marginBottom: '4px',
             display: 'block',
-        },
-        box: {
-            background: '#1D2939',
-            borderRadius: '8px',
-            padding: '8px',
-            textAlign: 'center',
-            border: '1px solid #475467',
-            marginBottom: '4px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center'
-        },
-        title: {
-            fontSize: '0.65rem',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-            marginBottom: '2px',
-            color: '#fff',
-            fontWeight: 'bold'
-        },
-        message: {
-            fontSize: '0.65rem',
-            fontWeight: 'bold',
         }
     };
 
@@ -95,9 +71,32 @@ const NotificationPanel = ({ sensorData }) => {
         <div style={styles.container}>
             <span style={styles.header}>Notifications</span>
             {notifications.map((notif, index) => (
-                <div key={index} style={{...styles.box, borderLeft: `4px solid ${notif.color}`}}>
-                    <div style={styles.title}>{notif.title}</div>
-                    <div style={{...styles.message, color: notif.color}}>{notif.message}</div>
+                <div key={index} style={{
+                    background: '#1D2939',
+                    borderRadius: '8px',
+                    padding: '8px',
+                    textAlign: 'center',
+                    border: '1px solid #475467',
+                    borderLeft: `4px solid ${notif.color}`,
+                    marginBottom: '4px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                }}>
+                    <div style={{
+                        fontSize: '0.65rem',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.5px',
+                        marginBottom: '2px',
+                        color: '#fff',
+                        fontWeight: 'bold'
+                    }}>{notif.title}</div>
+                    <div style={{
+                        fontSize: '0.65rem',
+                        fontWeight: 'bold',
+                        color: notif.color
+                    }}>{notif.message}</div>
                 </div>
             ))}
         </div>
