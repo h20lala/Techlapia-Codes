@@ -86,14 +86,19 @@ def run_process():
 def main():
     global target_weight
     
-    # Get user target input from terminal
-    while target_weight == 0:
+    if len(sys.argv) > 1:
+        try:
+            target_weight = float(sys.argv[1])
+        except ValueError:
+            pass
+
+    # Get user target input from terminal if not provided
+    while target_weight <= 0:
         try:
             user_input = input("Enter target weight in grams: ")
             target_weight = float(user_input)
             if target_weight <= 0:
                 print("Please enter a weight greater than 0.")
-                target_weight = 0
         except ValueError:
             print("Invalid input. Please enter a valid number.")
             

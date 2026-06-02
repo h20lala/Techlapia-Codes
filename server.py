@@ -355,8 +355,28 @@ scheduler_thread.start()
 def trigger_feed():
     # Manual Feed Trigger
     print("Feeder triggered manually!")
+    
+    # Check if weight was passed in request JSON
+    req_data = request.get_json(silent=True) or {}
+    target_weight = req_data.get('weight')
+    
     calc = calculate_feeding()
-    log_data = log_feeding(calc['amount_g'], calc['weight'], calc['population'])
+    # Use target_weight from request if present, else default calculation
+    final_weight = target_weight if target_weight else calc['amount_g']
+    
+    log_data = log_feeding(final_weight, calc['weight'], calc['population'])
+    
+    # Run feeder2.py with the target weight in a background thread/process
+    # Provide the absolute path to feeder2.py
+    feeder_script_path = os.path.join(os.path.dirname(__file__), 'AquaMonitor', 'tests', 'feeder2.py')
+    if os.path.exists(feeder_script_path):
+        import subprocess
+        # Use python3 to execute
+        subprocess.Popen(['python3', feeder_script_path, str(final_weight)])
+        print(f"Started feeder2.py with weight {final_weight}g")
+    else:
+        print(f"Warning: feeder2.py not found at {feeder_script_path}")
+
     return jsonify({"success": True, "log": log_data})
 
 @app.route('/api/schedule', methods=['GET'])

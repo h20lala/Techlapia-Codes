@@ -1,12 +1,32 @@
 import React from 'react';
 
 const ActionButtons = ({ onFeederTriggered }) => {
+    const [showFeederInput, setShowFeederInput] = React.useState(false);
+    const [feederWeight, setFeederWeight] = React.useState('');
+
     const handleFeeder = async () => {
+        if (!showFeederInput) {
+            setShowFeederInput(true);
+            return;
+        }
+
+        const weightVal = parseFloat(feederWeight);
+        if (isNaN(weightVal) || weightVal <= 0) {
+            alert("Please enter a valid weight in grams.");
+            return;
+        }
+
         try {
-            const res = await fetch(`http://${window.location.hostname}:5000/api/feed`, { method: 'POST' });
+            const res = await fetch(`http://${window.location.hostname}:5000/api/feed`, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ weight: weightVal })
+            });
             if (res.ok && onFeederTriggered) {
                 onFeederTriggered();
             }
+            setShowFeederInput(false);
+            setFeederWeight('');
         } catch (error) {
             console.error("Failed to trigger feeder", error);
         }
@@ -52,6 +72,14 @@ const ActionButtons = ({ onFeederTriggered }) => {
         waterBtn: { background: '#1570EF' }, // Blue
         aeratorBtn: { background: '#12B76A' }, // Green
         feederBtn: { background: '#F79009' }, // Orange
+        input: {
+            width: '100%',
+            padding: '8px',
+            borderRadius: '6px',
+            border: '1px solid #ccc',
+            fontSize: '0.75rem',
+            marginBottom: '4px'
+        }
     };
 
     return (
@@ -60,7 +88,20 @@ const ActionButtons = ({ onFeederTriggered }) => {
             <div style={styles.rowStyles}>
                 <button style={{ ...styles.button, ...styles.waterBtn }}>WATER</button>
                 <button style={{ ...styles.button, ...styles.aeratorBtn }}>AERATOR</button>
-                <button style={{ ...styles.button, ...styles.feederBtn }} onClick={handleFeeder}>FEEDER</button>
+                {!showFeederInput ? (
+                    <button style={{ ...styles.button, ...styles.feederBtn }} onClick={handleFeeder}>FEEDER</button>
+                ) : (
+                    <div>
+                        <input 
+                            type="number" 
+                            style={styles.input} 
+                            placeholder="Enter weight (g)" 
+                            value={feederWeight} 
+                            onChange={(e) => setFeederWeight(e.target.value)} 
+                        />
+                        <button style={{ ...styles.button, ...styles.feederBtn }} onClick={handleFeeder}>SUBMIT FEEDER</button>
+                    </div>
+                )}
             </div>
         </div>
     );
