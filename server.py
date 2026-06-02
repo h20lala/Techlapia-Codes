@@ -37,9 +37,15 @@ def init_db():
             temperature REAL,
             ph REAL,
             water_level REAL,
-            turbidity REAL
+            turbidity REAL,
+            synced INTEGER DEFAULT 0
         )
     ''')
+    try:
+        c.execute('ALTER TABLE logs ADD COLUMN synced INTEGER DEFAULT 0')
+    except sqlite3.OperationalError:
+        pass # Column already exists
+        
     c.execute('''
         CREATE TABLE IF NOT EXISTS settings (
             id INTEGER PRIMARY KEY,
@@ -317,12 +323,11 @@ def log_feeding(amount_g, weight_g, population):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute('''
-        INSERT INTO logs (date, time, amount_g, weight_g, population, temperature, ph, water_level, turbidity)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO logs (date, time, amount_g, weight_g, population, temperature, ph, water_level, turbidity, synced)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
     ''', (date_str, time_str, amount_g, weight_g, population, temp, ph, lvl, turb))
     log_id = c.lastrowid
     conn.commit()
-    conn.close()
     
     # Supabase save via REST API
     if SUPABASE_URL and SUPABASE_KEY:
@@ -352,8 +357,13 @@ def log_feeding(amount_g, weight_g, population):
             )
             with urllib.request.urlopen(req) as response:
                 print(f"Logged to Supabase: HTTP {response.status}")
+                # Mark as synced in local DB
+                c.execute('UPDATE logs SET synced = 1 WHERE id = ?', (log_id,))
+                conn.commit()
         except Exception as e:
-            print(f"Supabase REST log failed: {e}")
+            print(f"Supabase REST log failed (will sync later): {e}")
+
+    conn.close()
 
     return {
         "id": log_id, "date": date_str, "len": "40 mm", "feed": f"{amount_g} g", "w": f"{weight_g} g",
@@ -370,11 +380,66 @@ def scheduled_job():
         print(f"Time {now_hm} met! Triggering scheduled feed...")
         log_feeding(calc['amount_g'], calc['weight'], calc['population'])
 
+last_sync_time = 0
+
+def sync_to_supabase():
+    global last_sync_time
+    if time.time() - last_sync_time < 60:
+        return # Sync at most once per minute
+    
+    if not (SUPABASE_URL and SUPABASE_KEY):
+        return
+        
+    last_sync_time = time.time()
+    
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        c = conn.cursor()
+        c.execute('SELECT id, date, time, amount_g, weight_g, population, temperature, ph, water_level, turbidity FROM logs WHERE synced = 0')
+        unsynced_rows = c.fetchall()
+        
+        for row in unsynced_rows:
+            log_id = row[0]
+            payload = {
+                "date": row[1],
+                "time": row[2],
+                "amount_g": float(row[3]),
+                "weight_g": float(row[4]),
+                "population": int(row[5]),
+                "temperature": float(row[6]),
+                "ph": float(row[7]),
+                "water_level": float(row[8]),
+                "turbidity": float(row[9])
+            }
+            
+            url = f"{SUPABASE_URL}/rest/v1/logs"
+            req = urllib.request.Request(
+                url, 
+                data=json.dumps(payload).encode('utf-8'),
+                headers={
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                    "Content-Type": "application/json",
+                    "Prefer": "return=minimal"
+                },
+                method="POST"
+            )
+            with urllib.request.urlopen(req) as response:
+                if response.status in (200, 201, 204):
+                    c.execute('UPDATE logs SET synced = 1 WHERE id = ?', (log_id,))
+                    conn.commit()
+                    print(f"Background sync: Pushed missing log ID {log_id} to Supabase")
+        
+        conn.close()
+    except Exception as e:
+        print(f"Background sync to Supabase failed: {e}")
+
 def run_schedule():
-    # Check every minute
+    import time
     schedule.every().minute.at(":00").do(scheduled_job)
     while True:
         schedule.run_pending()
+        sync_to_supabase()
         time.sleep(1)
 
 # Start background scheduler
@@ -536,9 +601,31 @@ def get_logs():
 def delete_log(log_id):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
+    c.execute('SELECT date, time FROM logs WHERE id = ?', (log_id,))
+    row = c.fetchone()
+    
     c.execute('DELETE FROM logs WHERE id = ?', (log_id,))
     conn.commit()
     conn.close()
+    
+    if row and SUPABASE_URL and SUPABASE_KEY:
+        date_str, time_str = row
+        try:
+            # Delete by matching date and time
+            url = f"{SUPABASE_URL}/rest/v1/logs?date=eq.{urllib.parse.quote(date_str)}&time=eq.{urllib.parse.quote(time_str)}"
+            req = urllib.request.Request(
+                url, 
+                headers={
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": f"Bearer {SUPABASE_KEY}",
+                },
+                method="DELETE"
+            )
+            with urllib.request.urlopen(req) as response:
+                print(f"Deleted from Supabase: HTTP {response.status}")
+        except Exception as e:
+            print(f"Supabase delete failed: {e}")
+            
     return jsonify({"success": True})
 
 @app.route('/api/settings', methods=['POST'])
