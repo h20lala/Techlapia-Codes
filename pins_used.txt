@@ -1,0 +1,39 @@
+# Techlapia Raspberry Pi Pin Configuration
+
+This file lists all the physical pins and BCM GPIO numbers currently configured in the code for the sensors, relays, and motors.
+
+## 1. Water Level Sensor (Float Switch)
+- **BCM GPIO**: 26
+- **Physical Pin**: 37
+- **File Defined**: `AquaMonitor/config.py`
+
+## 2. Water Pump (Relay)
+- **BCM GPIO**: 21
+- **Physical Pin**: 40
+- **File Defined**: `AquaMonitor/tests/water_pump.py`
+
+## 3. Weight Sensor (HX711 Load Cell)
+- **DOUT Pin (BCM)**: 27 (Physical Pin 13)
+- **CLK Pin (BCM)**: 22 (Physical Pin 15)
+- **File Defined**: `AquaMonitor/tests/feeder2.py`
+*(Note: `config.py` has older fallback pins 5 and 6, but the active feeding script `feeder2.py` uses 27 and 22).*
+
+## 4. Feeder Servo Motors
+- **Servo 1 (BCM)**: 13 (Physical Pin 33)
+- **Servo 2 (BCM)**: 12 (Physical Pin 32)
+- **File Defined**: `AquaMonitor/tests/feeder2.py`
+
+## 5. Temperature Sensor (DS18B20)
+- **BCM GPIO**: 4 (Default 1-Wire interface)
+- **Physical Pin**: 7
+- **File Defined**: Built-in Raspberry Pi 1-Wire setup
+
+## 6. Turbidity Sensor (Digital Output)
+- **BCM GPIO**: 17
+- **Physical Pin**: 11
+- **File Defined**: `AquaMonitor/config.py`
+
+## 7. I2C Bus (ADS1115 ADC for pH and Turbidity Analog readings)
+- **SDA (BCM)**: 2 (Physical Pin 3)
+- **SCL (BCM)**: 3 (Physical Pin 5)
+- **Addressing**: pH is on Channel A0, Turbidity is on Channel A1.

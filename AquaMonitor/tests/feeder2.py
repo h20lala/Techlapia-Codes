@@ -9,8 +9,8 @@ DOUT_PIN = 27  # Physical Pin 13
 CLK_PIN = 22   # Physical Pin 15
 
 # Servo Pins (Using hardware PWM capable pins on RPi 5)
-SERVO1_PIN = 12  # Physical Pin 33
-SERVO2_PIN = 13  # Physical Pin 32
+SERVO1_PIN = 13  # Physical Pin 33
+SERVO2_PIN = 12  # Physical Pin 32
 
 # --- SYSTEM INITIALIZATION ---
 # Calibration factor from your Arduino setup

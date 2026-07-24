@@ -3,8 +3,8 @@ import sys
 from gpiozero import Servo
 
 # Servo Pins (Hardware PWM capable on RPi 5, matching feeder2.py)
-SERVO1_PIN = 12  # Physical Pin 32
-SERVO2_PIN = 13  # Physical Pin 33
+SERVO1_PIN = 13  # Physical Pin 33
+SERVO2_PIN = 12  # Physical Pin 32
 
 print("Initializing Servos on BCM 12 and 13...")
 try:
@@ -38,10 +38,10 @@ def test_servo(servo, name):
     servo.value = None
 
 try:
-    print("\nStarting Servo Test Sequence...")
-    test_servo(servo1, "Servo 1 (Pin 12 / Phys 32)")
-    test_servo(servo2, "Servo 2 (Pin 13 / Phys 33)")
-    print("\nServo Test Complete!")
+    print("Starting Servo Test Sequence...")
+    test_servo(servo1, "Servo 1 (Pin 13 / Phys 33)")
+    test_servo(servo2, "Servo 2 (Pin 12 / Phys 32)")
+    print("Servo Test Complete!")
     
 except KeyboardInterrupt:
     print("\nTest interrupted by user.")
