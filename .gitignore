@@ -15,3 +15,5 @@ Thumbs.db
 # User Exclusions
 Techlapia-Methods.pdf
 programs/
+techlapia.db
+*.save

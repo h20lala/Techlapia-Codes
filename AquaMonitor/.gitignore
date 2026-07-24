@@ -8,6 +8,8 @@ venv/
 data/
 *.csv
 *.log
+techlapia.db
+*.save
 
 # IDE
 .vscode/
