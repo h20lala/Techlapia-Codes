@@ -3,7 +3,7 @@
 # --- GPIO Settings (BCM Numbering) ---
 # DS18B20 is typically 1-Wire (GPIO 4 by default on Pi, but can be configured)
 # Float Switch
-PIN_FLOAT_SWITCH = 27
+PIN_FLOAT_SWITCH = 26
 
 # Turbidity Digital
 PIN_TURBIDITY_DIGITAL = 17 

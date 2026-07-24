@@ -78,6 +78,8 @@ TEMP_MOCK = True
 ph_chan = None
 turbidity_sensor = None
 device_file = None
+water_level_sensor = None
+WATER_LEVEL_MOCK = True
 
 try:
     import board
@@ -119,6 +121,17 @@ try:
             print("Temperature sensor 1-wire folder not found.")
     except Exception as e:
         print(f"Temperature sensor missing or failed: {e}")
+
+    # Water Level Setup
+    try:
+        from gpiozero import Button
+        import config
+        # Assuming switch is connected between GPIO and GND (pull_up=True)
+        water_level_sensor = Button(config.PIN_FLOAT_SWITCH, pull_up=True)
+        WATER_LEVEL_MOCK = False
+        print("Water level sensor initialized successfully.")
+    except Exception as e:
+        print(f"Water level sensor missing or failed: {e}")
 
 except Exception as e:
     print(f"Sensor libraries not found or hardware missing: {e}")
@@ -198,8 +211,19 @@ def read_turbidity():
         return 0
 
 def read_water_level():
-    return 75 
-
+    if WATER_LEVEL_MOCK or not water_level_sensor:
+        return 75 
+        
+    try:
+        # Depending on float switch orientation:
+        # is_pressed (True) typically means switch is closed (Low water or High water).
+        # Adjust logic if needed. Let's return 75 for OK, 20 for Low.
+        if water_level_sensor.is_pressed:
+            return 75 # Example: switch closed means water is full/high
+        else:
+            return 20 # Example: switch open means water is low
+    except:
+        return 0
 @app.route('/api/sensors')
 def get_sensors():
     global last_temp_state, user_overridden, override_time, water_pump_process
