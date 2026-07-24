@@ -122,20 +122,21 @@ try:
     except Exception as e:
         print(f"Temperature sensor missing or failed: {e}")
 
-    # Water Level Setup
-    try:
-        from gpiozero import Button
-        import config
-        # Assuming switch is connected between GPIO and GND (pull_up=True)
-        water_level_sensor = Button(config.PIN_FLOAT_SWITCH, pull_up=True)
-        WATER_LEVEL_MOCK = False
-        print("Water level sensor initialized successfully.")
-    except Exception as e:
-        print(f"Water level sensor missing or failed: {e}")
+    # Water Level Setup is moved outside this block to avoid dependency issues
 
 except Exception as e:
     print(f"Sensor libraries not found or hardware missing: {e}")
-    print("Running in MOCK MODE for ALL SENSORS")
+    print("Running in MOCK MODE for I2C/1-Wire SENSORS")
+
+# --- INDEPENDENT WATER LEVEL SETUP ---
+try:
+    from gpiozero import Button
+    import AquaMonitor.config as config
+    water_level_sensor = Button(config.PIN_FLOAT_SWITCH, pull_up=True)
+    WATER_LEVEL_MOCK = False
+    print("Water level sensor initialized successfully.")
+except Exception as e:
+    print(f"Water level sensor missing or failed: {e}")
 
 app = Flask(__name__)
 CORS(app) # Enable CORS for React frontend
