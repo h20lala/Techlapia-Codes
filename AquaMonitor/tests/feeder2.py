@@ -75,8 +75,8 @@ def run_process():
     time.sleep(0.5)
     servo2.value = None  
     
-    print("Waiting 10 seconds...")
-    time.sleep(10.0)
+    print("Waiting 3 seconds...")
+    time.sleep(3.0)
     
     print("Closing Servo 2 back to 0 degrees...")
     servo2.value = -1.0
